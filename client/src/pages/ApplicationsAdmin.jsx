@@ -10,14 +10,25 @@ export default function ApplicationsAdmin() {
   const toast = useToast();
 
   const loadFor = async () => {
-    if (!userId) return toast?.add("Enter influencer id", { type: "error" });
     setLoading(true);
     try {
-      const res = await fetch(`/api/applications/by-influencer/${userId}`, {
-        headers: auth?.token
-          ? { Authorization: `Bearer ${auth.token}` }
-          : undefined,
-      });
+      let res;
+      if (!userId && auth?.user?.role === "admin") {
+        // admin wants to see all applications
+        res = await fetch(`/api/applications`, {
+          headers: auth?.token
+            ? { Authorization: `Bearer ${auth.token}` }
+            : undefined,
+        });
+      } else {
+        if (!userId)
+          return toast?.add("Enter influencer id", { type: "error" });
+        res = await fetch(`/api/applications/by-influencer/${userId}`, {
+          headers: auth?.token
+            ? { Authorization: `Bearer ${auth.token}` }
+            : undefined,
+        });
+      }
       if (!res.ok) throw new Error("Failed to load applications");
       const body = await res.json();
       setApps(body);

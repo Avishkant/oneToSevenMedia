@@ -111,6 +111,14 @@ export default function Header() {
                       Dashboard
                     </Link>
                   )}
+                  {role === "influencer" && (
+                    <Link
+                      to="/influencer/applications"
+                      className="block px-4 py-2 hover:bg-white/5"
+                    >
+                      My applications
+                    </Link>
+                  )}
                   {(role === "admin" || role === "superadmin") && (
                     <Link
                       to="/admin/dashboard"
@@ -168,6 +176,11 @@ export default function Header() {
                 {role === "influencer" && (
                   <Link to="/influencer/dashboard" className="block">
                     Dashboard
+                  </Link>
+                )}
+                {role === "influencer" && (
+                  <Link to="/influencer/applications" className="block">
+                    My applications
                   </Link>
                 )}
                 {(role === "admin" || role === "superadmin") && (

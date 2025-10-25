@@ -44,8 +44,38 @@ export default function InfluencerDashboard() {
 }
 
 function CampaignsListInner() {
+  const auth = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [appliedIds, setAppliedIds] = useState(new Set());
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadApps() {
+      if (!auth?.user || auth.user.role !== "influencer") return;
+      try {
+        const token = auth?.token || localStorage.getItem("accessToken");
+        const res = await fetch(
+          `/api/applications/by-influencer/${auth.user.id}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
+        );
+        if (!res.ok) return; // ignore failures here
+        const body = await res.json();
+        if (mounted)
+          setAppliedIds(
+            new Set(
+              (body || []).map((a) => String(a.campaign?._id || a.campaign))
+            )
+          );
+      } catch {
+        // ignore
+      }
+    }
+    loadApps();
+    return () => (mounted = false);
+  }, [auth]);
 
   useEffect(() => {
     let mounted = true;
@@ -77,6 +107,7 @@ function CampaignsListInner() {
       {items.map((c) => (
         <CampaignCard
           key={c._id}
+          id={c._id}
           title={c.title}
           brand={c.brandName}
           budget={`$${c.budget || 0}`}
@@ -85,6 +116,8 @@ function CampaignsListInner() {
             c.imageUrl ||
             "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&q=80&auto=format&fit=crop"
           }
+          applied={appliedIds.has(String(c._id))}
+          onApplied={(id) => setAppliedIds((s) => new Set([...s, String(id)]))}
         />
       ))}
     </div>

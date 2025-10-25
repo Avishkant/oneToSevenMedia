@@ -14,6 +14,7 @@ const applicationSchema = new mongoose.Schema(
     },
     answers: [{ question: String, answer: String }],
     sampleMedia: [{ type: String }],
+    followersAtApply: { type: Number },
     status: {
       type: String,
       enum: ["applied", "reviewing", "approved", "rejected"],

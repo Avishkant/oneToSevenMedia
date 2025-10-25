@@ -2,6 +2,7 @@ const express = require("express");
 const {
   apply,
   listByInfluencer,
+  listAllApplications,
   approveApplication,
   rejectApplication,
 } = require("../controllers/applicationController");
@@ -12,6 +13,14 @@ const router = express.Router();
 
 // apply as influencer (auth optional: influencer id may be supplied in body for tests)
 router.post("/", auth, requireRole("influencer", "admin", "brand"), apply);
+// admin: list all applications
+router.get(
+  "/",
+  auth,
+  requireRole("admin"),
+  (req, res, next) => next(),
+  listAllApplications
+);
 // list by influencer (owner or admin)
 router.get(
   "/by-influencer/:userId",

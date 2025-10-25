@@ -2,12 +2,43 @@ import Hero from "../components/Hero";
 import FeatureCard from "../components/FeatureCard";
 import CampaignCard from "../components/CampaignCard";
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
+  const auth = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 6;
+  const [appliedIds, setAppliedIds] = useState(new Set());
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadApps() {
+      if (!auth?.user || auth.user.role !== "influencer") return;
+      try {
+        const token = auth?.token || localStorage.getItem("accessToken");
+        const res = await fetch(
+          `/api/applications/by-influencer/${auth.user.id}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
+        );
+        if (!res.ok) return;
+        const body = await res.json();
+        if (mounted)
+          setAppliedIds(
+            new Set(
+              (body || []).map((a) => String(a.campaign?._id || a.campaign))
+            )
+          );
+      } catch {
+        // ignore
+      }
+    }
+    loadApps();
+    return () => (mounted = false);
+  }, [auth]);
 
   useEffect(() => {
     let mounted = true;
@@ -64,6 +95,7 @@ export default function Home() {
           {paginated.map((c) => (
             <CampaignCard
               key={c._id}
+              id={c._id}
               title={c.title}
               brand={c.brandName}
               budget={`$${c.budget || 0}`}
@@ -71,6 +103,10 @@ export default function Home() {
               imageUrl={
                 c.imageUrl ||
                 "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&q=80&auto=format&fit=crop"
+              }
+              applied={appliedIds.has(String(c._id))}
+              onApplied={(id) =>
+                setAppliedIds((s) => new Set([...s, String(id)]))
               }
             />
           ))}

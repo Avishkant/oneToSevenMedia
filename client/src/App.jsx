@@ -12,6 +12,8 @@ import CampaignsList from "./pages/CampaignsList";
 import CreateCampaign from "./pages/CreateCampaign";
 import CampaignEdit from "./pages/CampaignEdit";
 import ApplicationsAdmin from "./pages/ApplicationsAdmin";
+import AdminApplicationsOverview from "./pages/AdminApplicationsOverview";
+import MyApplications from "./pages/MyApplications";
 import InfluencersList from "./pages/InfluencersList";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
 import PrivateRoute from "./components/PrivateRoute";
@@ -94,10 +96,26 @@ function App() {
             }
           />
           <Route
+            path="/admin/applications-overview"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <AdminApplicationsOverview />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/admin/influencers"
             element={
               <PrivateRoute roles={["admin", "superadmin"]}>
                 <InfluencersList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/influencer/applications"
+            element={
+              <PrivateRoute roles={["influencer"]}>
+                <MyApplications />
               </PrivateRoute>
             }
           />
