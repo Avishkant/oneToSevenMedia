@@ -30,6 +30,9 @@ const userSchema = new mongoose.Schema(
     dob: { type: Date },
     employmentStatus: { type: String },
     profession: { type: String },
+    // Admin fields
+    permissions: [{ type: String }],
+    isSuper: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

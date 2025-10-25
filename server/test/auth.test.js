@@ -74,27 +74,37 @@ describe("auth register/login", () => {
     expect(res.status).toBe(401);
   });
 
-  it('refreshes access token using refresh token', async () => {
-    const app = createApp()
-    const reg = await request(app).post('/api/auth/register').send({ name: 'Ref', email: 'ref@example.com', password: 'pw' })
-    expect(reg.status).toBe(201)
-    const refreshToken = reg.body.refreshToken
+  it("refreshes access token using refresh token", async () => {
+    const app = createApp();
+    const reg = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Ref", email: "ref@example.com", password: "pw" });
+    expect(reg.status).toBe(201);
+    const refreshToken = reg.body.refreshToken;
     // call refresh
-    const res = await request(app).post('/api/auth/refresh').send({ refreshToken })
-    expect(res.status).toBe(200)
-    expect(res.body).toHaveProperty('token')
-    expect(res.body).toHaveProperty('refreshToken')
-  })
+    const res = await request(app)
+      .post("/api/auth/refresh")
+      .send({ refreshToken });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("token");
+    expect(res.body).toHaveProperty("refreshToken");
+  });
 
-  it('logout revokes refresh token', async () => {
-    const app = createApp()
-    const reg = await request(app).post('/api/auth/register').send({ name: 'L', email: 'l@example.com', password: 'pw' })
-    const refreshToken = reg.body.refreshToken
-    const res = await request(app).post('/api/auth/logout').send({ refreshToken })
-    expect(res.status).toBe(200)
-    expect(res.body).toHaveProperty('ok', true)
+  it("logout revokes refresh token", async () => {
+    const app = createApp();
+    const reg = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "L", email: "l@example.com", password: "pw" });
+    const refreshToken = reg.body.refreshToken;
+    const res = await request(app)
+      .post("/api/auth/logout")
+      .send({ refreshToken });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("ok", true);
     // subsequent refresh should fail
-    const res2 = await request(app).post('/api/auth/refresh').send({ refreshToken })
-    expect(res2.status).toBe(401)
-  })
+    const res2 = await request(app)
+      .post("/api/auth/refresh")
+      .send({ refreshToken });
+    expect(res2.status).toBe(401);
+  });
 });

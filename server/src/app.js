@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const authRoutes = require("./routes/auth");
 const campaignRoutes = require("./routes/campaigns");
 const applicationRoutes = require("./routes/applications");
+const adminRoutes = require("./routes/admins");
 
 function createApp() {
   const app = express();
@@ -23,6 +24,8 @@ function createApp() {
   app.use("/api/campaigns", campaignRoutes);
   // mount application routes
   app.use("/api/applications", applicationRoutes);
+  // mount admin routes
+  app.use("/api/admins", adminRoutes);
 
   return app;
 }
