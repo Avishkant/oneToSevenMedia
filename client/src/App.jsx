@@ -1,35 +1,112 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route } from "react-router-dom";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import InfluencerLogin from "./pages/InfluencerLogin";
+import InfluencerRegister from "./pages/InfluencerRegister";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminsList from "./pages/AdminsList";
+import AdminDetail from "./pages/AdminDetail";
+import CampaignsList from "./pages/CampaignsList";
+import CreateCampaign from "./pages/CreateCampaign";
+import CampaignEdit from "./pages/CampaignEdit";
+import ApplicationsAdmin from "./pages/ApplicationsAdmin";
+import InfluencersList from "./pages/InfluencersList";
+import InfluencerDashboard from "./pages/InfluencerDashboard";
+import PrivateRoute from "./components/PrivateRoute";
+import "./index.css";
+import { ToastProvider } from "./context/ToastContext";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <ToastProvider>
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-slate-100">
+        <Header />
+
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/influencer/login" element={<InfluencerLogin />} />
+          <Route path="/influencer/register" element={<InfluencerRegister />} />
+          <Route
+            path="/influencer/dashboard"
+            element={
+              <PrivateRoute roles={["influencer"]}>
+                <InfluencerDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/admins"
+            element={
+              <PrivateRoute roles={["superadmin"]}>
+                <AdminsList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/admins/:id"
+            element={
+              <PrivateRoute roles={["superadmin"]}>
+                <AdminDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/campaigns"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <CampaignsList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/campaigns/create"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <CreateCampaign />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/campaigns/:id/edit"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <CampaignEdit />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/applications"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <ApplicationsAdmin />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/influencers"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <InfluencersList />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+
+        <Footer />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </ToastProvider>
+  );
 }
 
-export default App
+export default App;

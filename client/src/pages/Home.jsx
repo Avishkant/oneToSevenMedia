@@ -1,0 +1,103 @@
+import Hero from "../components/Hero";
+import FeatureCard from "../components/FeatureCard";
+import CampaignCard from "../components/CampaignCard";
+import { useEffect, useState } from "react";
+
+export default function Home() {
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/campaigns");
+        if (!res.ok) throw new Error("Failed to load campaigns");
+        const body = await res.json();
+        if (mounted)
+          setCampaigns((body || []).filter((c) => c.isPublic !== false));
+      } catch {
+        // ignore for now
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => (mounted = false);
+  }, []);
+
+  const totalPages = Math.max(1, Math.ceil(campaigns.length / pageSize));
+  const paginated = campaigns.slice((page - 1) * pageSize, page * pageSize);
+
+  return (
+    <main className="max-w-6xl mx-auto px-6 lg:px-8">
+      <Hero />
+
+      <section className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <FeatureCard
+          title="Discover Influencers"
+          description="Filter creators by niche, audience size, and engagement to find perfect fits for your campaign."
+          icon="/"
+        />
+        <FeatureCard
+          title="Manage Campaigns"
+          description="Create, collaborate and review applications with a beautiful, simple workflow."
+          icon="/"
+        />
+        <FeatureCard
+          title="Secure Payments"
+          description="Track payouts and approvals with clear audit trails and manual or automated payouts."
+          icon="/"
+        />
+      </section>
+
+      <section className="mt-16" id="campaigns">
+        <h2 className="text-3xl font-extrabold mb-6">Featured Campaigns</h2>
+        {loading && <div className="text-sm">Loading campaigns...</div>}
+        {!loading && paginated.length === 0 && (
+          <div className="text-sm text-slate-300">No campaigns available.</div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginated.map((c) => (
+            <CampaignCard
+              key={c._id}
+              title={c.title}
+              brand={c.brandName}
+              budget={`$${c.budget || 0}`}
+              tags={c.category ? [c.category] : []}
+              imageUrl={
+                c.imageUrl ||
+                "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&q=80&auto=format&fit=crop"
+              }
+            />
+          ))}
+        </div>
+
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-slate-300">
+            Page {page} of {totalPages}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="btn-primary"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="btn-primary"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

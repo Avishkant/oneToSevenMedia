@@ -5,23 +5,29 @@ const { requireRole } = require("../middleware/rbac");
 
 const router = express.Router();
 
-// Create a campaign (only brand or admin)
-router.post("/", auth, requireRole("admin", "brand"), async (req, res) => {
-  const body = req.body || {};
-  const { title, brandName, category } = body;
-  if (!title || !brandName || !category) {
-    return res.status(400).json({ error: "missing_required_fields" });
+// Create a campaign (only brand, admin or superadmin)
+// allow superadmin here so platform owners can create campaigns too
+router.post(
+  "/",
+  auth,
+  requireRole("admin", "brand", "superadmin"),
+  async (req, res) => {
+    const body = req.body || {};
+    const { title, brandName, category } = body;
+    if (!title || !brandName || !category) {
+      return res.status(400).json({ error: "missing_required_fields" });
+    }
+    try {
+      const camp = new Campaign(body);
+      await camp.save();
+      res.status(201).json(camp);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      res.status(500).json({ error: "server_error" });
+    }
   }
-  try {
-    const camp = new Campaign(body);
-    await camp.save();
-    res.status(201).json(camp);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
-    res.status(500).json({ error: "server_error" });
-  }
-});
+);
 
 // List campaigns with basic filters: category, minFollowers
 router.get("/", async (req, res) => {
@@ -53,5 +59,46 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: "server_error" });
   }
 });
+
+// Update a campaign (admin/brand/superadmin)
+router.patch(
+  "/:id",
+  auth,
+  requireRole("admin", "brand", "superadmin"),
+  async (req, res) => {
+    try {
+      const updates = req.body || {};
+      // Only allow updating known fields
+      const allowed = [
+        "title",
+        "brandName",
+        "category",
+        "followersMin",
+        "followersMax",
+        "location",
+        "requirements",
+        "budget",
+        "deliverables",
+        "timeline",
+        "questions",
+        "isPublic",
+      ];
+      const patch = {};
+      allowed.forEach((k) => {
+        if (Object.prototype.hasOwnProperty.call(updates, k))
+          patch[k] = updates[k];
+      });
+      const updated = await Campaign.findByIdAndUpdate(req.params.id, patch, {
+        new: true,
+      });
+      if (!updated) return res.status(404).json({ error: "not_found" });
+      res.json(updated);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      res.status(500).json({ error: "server_error" });
+    }
+  }
+);
 
 module.exports = router;
