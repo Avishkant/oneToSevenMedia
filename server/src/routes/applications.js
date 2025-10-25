@@ -13,11 +13,11 @@ const router = express.Router();
 
 // apply as influencer (auth optional: influencer id may be supplied in body for tests)
 router.post("/", auth, requireRole("influencer", "admin", "brand"), apply);
-// admin: list all applications
+// admin/superadmin: list all applications
 router.get(
   "/",
   auth,
-  requireRole("admin"),
+  requireRole("admin", "superadmin"),
   (req, res, next) => next(),
   listAllApplications
 );
@@ -37,8 +37,18 @@ router.get(
   listByInfluencer
 );
 
-// admin approval endpoints
-router.post("/:id/approve", auth, requireRole("admin"), approveApplication);
-router.post("/:id/reject", auth, requireRole("admin"), rejectApplication);
+// admin/superadmin approval endpoints
+router.post(
+  "/:id/approve",
+  auth,
+  requireRole("admin", "superadmin"),
+  approveApplication
+);
+router.post(
+  "/:id/reject",
+  auth,
+  requireRole("admin", "superadmin"),
+  rejectApplication
+);
 
 module.exports = router;
