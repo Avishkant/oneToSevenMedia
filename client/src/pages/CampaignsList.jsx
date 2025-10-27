@@ -133,6 +133,11 @@ export default function CampaignsList() {
                     brand={c.brandName}
                     budget={c.budget}
                     tags={c.category ? [c.category] : []}
+                    category={c.category}
+                    followersMin={c.followersMin}
+                    followersMax={c.followersMax}
+                    location={c.location}
+                    requirements={c.requirements}
                     imageUrl={c.imageUrl}
                     highlight={brandMatch}
                     actions={

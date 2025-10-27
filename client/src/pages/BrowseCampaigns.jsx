@@ -57,6 +57,11 @@ export default function BrowseCampaigns() {
               brand={c.brandName}
               budget={`$${c.budget || 0}`}
               tags={c.category ? [c.category] : []}
+              category={c.category}
+              followersMin={c.followersMin}
+              followersMax={c.followersMax}
+              location={c.location}
+              requirements={c.requirements}
               imageUrl={
                 c.imageUrl ||
                 "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&q=80&auto=format&fit=crop"

@@ -183,7 +183,7 @@ export default function ApplicationsAdmin() {
                           {isExpanded ? "▾" : "▸"}
                         </button>
                         <div className="font-semibold text-lg">
-                          {g.campaign?.title || "(unknown campaign)"}
+                          {g.campaign?.brandName || "(unknown campaign)"}
                         </div>
                       </div>
                       <div className="text-sm text-slate-300">
@@ -274,7 +274,7 @@ export default function ApplicationsAdmin() {
                       Application details
                     </div>
                     <div className="text-sm text-slate-400">
-                      {selectedApp.campaign?.title || selectedApp.campaign}
+                      {selectedApp.campaign?.brandName || selectedApp.campaign}
                     </div>
                   </div>
                   <div>

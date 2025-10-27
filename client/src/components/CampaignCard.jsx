@@ -10,6 +10,11 @@ export default function CampaignCard({
   brand,
   budget,
   tags = [],
+  category,
+  followersMin,
+  followersMax,
+  location,
+  requirements,
   imageUrl,
   highlight = false,
   actions = null,
@@ -151,11 +156,39 @@ export default function CampaignCard({
         <div className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-semibold">{title}</h3>
+              <h3 className="font-semibold">{brand}</h3>
               <p className="text-xs text-slate-300">
-                <span className="font-medium text-indigo-200">{brand}</span>
+                <span className="font-medium text-indigo-200">{title}</span>
                 {budget ? ` • ${budget}` : ""}
               </p>
+              <div className="mt-3 text-sm text-slate-300 space-y-1">
+                <div>
+                  <span className="font-semibold">Looking for:</span>{" "}
+                  {category || tags[0] || "-"}
+                </div>
+                <div>
+                  <span className="font-semibold">Followers:</span>{" "}
+                  {typeof followersMin === "number" && followersMin > 0
+                    ? followersMax && followersMax > followersMin
+                      ? `${followersMin} - ${followersMax}`
+                      : `Above ${followersMin}`
+                    : followersMax && followersMax > 0
+                    ? `Up to ${followersMax}`
+                    : "-"}
+                </div>
+                <div>
+                  <span className="font-semibold">Location:</span>{" "}
+                  {location || "-"}
+                </div>
+                <div>
+                  <span className="font-semibold">Requirements:</span>{" "}
+                  {requirements ? (
+                    <span className="text-slate-400">{requirements}</span>
+                  ) : (
+                    "-"
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {tags.slice(0, 2).map((t) => (

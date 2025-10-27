@@ -70,7 +70,7 @@ export default function AdminApplicationsOverview() {
           {Object.values(grouped).map((g) => (
             <div key={g.campaign?._id || Math.random()} className="mb-6">
               <div className="font-semibold">
-                {g.campaign?.title || "(unknown campaign)"}
+                {g.campaign?.brandName || "(unknown campaign)"}
               </div>
               <ul className="divide-y divide-white/6 mt-2">
                 {g.apps.map((a) => (

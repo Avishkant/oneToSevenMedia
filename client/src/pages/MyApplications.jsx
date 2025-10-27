@@ -49,7 +49,7 @@ export default function MyApplications() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold">
-                      {a.campaign?.title || "(campaign)"}
+                      {a.campaign?.brandName || "(campaign)"}
                     </div>
                     <div className="text-sm text-slate-400">
                       Status: {a.status} • Followers at apply:{" "}

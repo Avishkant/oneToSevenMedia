@@ -41,9 +41,9 @@ export default function CampaignDetail() {
               className="w-40 h-40 object-cover rounded"
             />
             <div>
-              <h1 className="text-2xl font-bold">{campaign.title}</h1>
+              <h1 className="text-2xl font-bold">{campaign.brandName}</h1>
               <div className="text-sm text-slate-400 mt-2">
-                {campaign.brandName} • {campaign.category}
+                {campaign.title} • {campaign.category}
               </div>
               <p className="mt-4 text-slate-200">{campaign.brief}</p>
             </div>
