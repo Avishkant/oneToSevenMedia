@@ -12,6 +12,7 @@ const {
 } = require("../controllers/applicationController");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
+const { requirePermission } = require("../middleware/permissions");
 
 const router = express.Router();
 
@@ -46,12 +47,14 @@ router.post(
   "/:id/approve",
   auth,
   requireRole("admin", "superadmin"),
+  requirePermission("applications:review"),
   approveApplication
 );
 router.post(
   "/:id/reject",
   auth,
   requireRole("admin", "superadmin"),
+  requirePermission("applications:review"),
   rejectApplication
 );
 
@@ -59,12 +62,19 @@ router.post(
 router.patch("/:id/order", auth, requireRole("influencer"), submitOrder);
 
 // admin: list submitted orders
-router.get("/orders", auth, requireRole("admin", "superadmin"), listOrders);
+router.get(
+  "/orders",
+  auth,
+  requireRole("admin", "superadmin"),
+  requirePermission("orders:review"),
+  listOrders
+);
 
 router.post(
   "/:id/order/approve",
   auth,
   requireRole("admin", "superadmin"),
+  requirePermission("orders:review"),
   approveOrder
 );
 
@@ -72,6 +82,7 @@ router.post(
   "/:id/order/reject",
   auth,
   requireRole("admin", "superadmin"),
+  requirePermission("orders:review"),
   rejectOrder
 );
 

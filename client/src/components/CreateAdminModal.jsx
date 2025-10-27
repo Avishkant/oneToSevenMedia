@@ -1,11 +1,13 @@
 import { useState } from "react";
 import useToast from "../context/useToast";
+import { ADMIN_PERMISSIONS } from "../constants/adminPermissions";
 
 export default function CreateAdminModal({ open, onClose, onCreated, auth }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [permissions, setPermissions] = useState("");
+  const [permissions, setPermissions] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
@@ -15,15 +17,7 @@ export default function CreateAdminModal({ open, onClose, onCreated, auth }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        name,
-        email,
-        password,
-        permissions: permissions
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      };
+      const payload = { name, email, password, permissions };
       const res = await fetch("/api/admins", {
         method: "POST",
         headers: {
@@ -40,7 +34,7 @@ export default function CreateAdminModal({ open, onClose, onCreated, auth }) {
       setName("");
       setEmail("");
       setPassword("");
-      setPermissions("");
+      setPermissions([]);
       onCreated && onCreated();
       onClose && onClose();
     } catch (err) {
@@ -77,12 +71,49 @@ export default function CreateAdminModal({ open, onClose, onCreated, auth }) {
             placeholder="Password"
             className="px-3 py-2 rounded bg-white/3"
           />
-          <input
-            value={permissions}
-            onChange={(e) => setPermissions(e.target.value)}
-            placeholder="Permissions (comma separated)"
-            className="px-3 py-2 rounded bg-white/3"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-slate-300">Permissions</div>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectAll}
+                onChange={(e) => {
+                  const v = !!e.target.checked;
+                  setSelectAll(v);
+                  setPermissions(v ? ADMIN_PERMISSIONS.map((p) => p.key) : []);
+                }}
+              />
+              <span className="text-sm">Select all</span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {ADMIN_PERMISSIONS.map((p) => (
+              <label key={p.key} className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={permissions.includes(p.key)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const next = [...permissions, p.key];
+                      setPermissions(next);
+                      if (next.length === ADMIN_PERMISSIONS.length)
+                        setSelectAll(true);
+                    } else {
+                      setPermissions((s) => s.filter((x) => x !== p.key));
+                      setSelectAll(false);
+                    }
+                  }}
+                />
+                <span className="text-sm">{p.label}</span>
+                {permissions.includes(p.key) && (
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-emerald-600 rounded text-white">
+                    Granted
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
           <div className="flex gap-2 mt-3">
             <button type="submit" disabled={saving} className="btn-primary">
               {saving ? "Creating..." : "Create"}

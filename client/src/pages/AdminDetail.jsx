@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import { ADMIN_PERMISSIONS } from "../constants/adminPermissions";
 
 export default function AdminDetail() {
   const { id } = useParams();
@@ -9,7 +10,8 @@ export default function AdminDetail() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [password, setPassword] = useState("");
-  const [permissions, setPermissions] = useState("");
+  const [permissions, setPermissions] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const auth = useAuth();
   const toast = useToast();
 
@@ -27,7 +29,9 @@ export default function AdminDetail() {
         const body = await res.json();
         if (mounted) {
           setAdmin(body);
-          setPermissions((body.permissions || []).join(", "));
+          const perms = body.permissions || [];
+          setPermissions(perms);
+          setSelectAll(perms.length === ADMIN_PERMISSIONS.length);
         }
       } catch (err) {
         toast?.add(err.message || "Failed to load admin", { type: "error" });
@@ -44,10 +48,7 @@ export default function AdminDetail() {
     try {
       const body = {};
       if (password) body.password = password;
-      body.permissions = permissions
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean);
+      body.permissions = permissions || [];
 
       const res = await fetch(`/api/admins/${id}`, {
         method: "PATCH",
@@ -120,14 +121,50 @@ export default function AdminDetail() {
               <div className="font-medium">{admin.role}</div>
             </div>
             <div className="md:col-span-2">
-              <div className="text-sm text-slate-400">
-                Permissions (comma separated)
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-slate-400">Permissions</div>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={(e) => {
+                      const v = !!e.target.checked;
+                      setSelectAll(v);
+                      setPermissions(
+                        v ? ADMIN_PERMISSIONS.map((p) => p.key) : []
+                      );
+                    }}
+                  />
+                  <span className="text-sm text-slate-300">Select all</span>
+                </label>
               </div>
-              <input
-                value={permissions}
-                onChange={(e) => setPermissions(e.target.value)}
-                className="w-full px-3 py-2 rounded bg-white/3 mt-1"
-              />
+              <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {ADMIN_PERMISSIONS.map((p) => (
+                  <label key={p.key} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={permissions.includes(p.key)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const next = [...permissions, p.key];
+                          setPermissions(next);
+                          if (next.length === ADMIN_PERMISSIONS.length)
+                            setSelectAll(true);
+                        } else {
+                          setPermissions((s) => s.filter((x) => x !== p.key));
+                          setSelectAll(false);
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{p.label}</span>
+                    {permissions.includes(p.key) && (
+                      <span className="ml-2 px-2 py-0.5 text-xs bg-emerald-600 rounded text-white">
+                        Granted
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="md:col-span-2">
               <div className="text-sm text-slate-400">Reset password</div>
