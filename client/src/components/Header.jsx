@@ -77,6 +77,9 @@ export default function Header() {
           <a href="#campaigns" className="hover:text-white">
             Campaigns
           </a>
+          <a href="/campaigns/browse" className="hover:text-white">
+            Browse
+          </a>
           <a href="#pricing" className="hover:text-white">
             Pricing
           </a>
@@ -111,12 +114,34 @@ export default function Header() {
                       Dashboard
                     </Link>
                   )}
+                  <Link
+                    to="/campaigns/browse"
+                    className="block px-4 py-2 hover:bg-white/5"
+                  >
+                    Browse campaigns
+                  </Link>
                   {role === "influencer" && (
                     <Link
                       to="/influencer/applications"
                       className="block px-4 py-2 hover:bg-white/5"
                     >
                       My applications
+                    </Link>
+                  )}
+                  {role === "influencer" && (
+                    <Link
+                      to="/influencer/profile"
+                      className="block px-4 py-2 hover:bg-white/5"
+                    >
+                      Profile
+                    </Link>
+                  )}
+                  {role === "influencer" && (
+                    <Link
+                      to="/influencer/wallet"
+                      className="block px-4 py-2 hover:bg-white/5"
+                    >
+                      Wallet
                     </Link>
                   )}
                   {(role === "admin" || role === "superadmin") && (

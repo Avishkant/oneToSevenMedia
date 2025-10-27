@@ -6,11 +6,13 @@ const User = require("../models/user");
 async function approveApplication(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const { comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
     app.status = "approved";
     app.reviewer = reviewerId;
+    if (comment) app.adminComment = comment;
     // record payout as approved (not paid yet)
     if (!app.payout) app.payout = {};
     app.payout.amount = app.payout.amount || 0;
@@ -27,12 +29,14 @@ async function rejectApplication(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
   const { reason } = req.body || {};
+  const { comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
     app.status = "rejected";
     app.reviewer = reviewerId;
     app.rejectionReason = reason;
+    if (comment) app.adminComment = comment;
     await app.save();
     res.json(app);
   } catch (err) {

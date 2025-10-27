@@ -33,6 +33,7 @@ const applicationSchema = new mongoose.Schema(
       transactionRef: { type: String },
     },
     rejectionReason: { type: String },
+    adminComment: { type: String },
   },
   { timestamps: true }
 );

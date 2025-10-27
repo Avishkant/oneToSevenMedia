@@ -16,6 +16,10 @@ import AdminApplicationsOverview from "./pages/AdminApplicationsOverview";
 import MyApplications from "./pages/MyApplications";
 import InfluencersList from "./pages/InfluencersList";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
+import BrowseCampaigns from "./pages/BrowseCampaigns";
+import CampaignDetail from "./pages/CampaignDetail";
+import Profile from "./pages/ProfileNew";
+// import Wallet from "./pages/Wallet";
 import PrivateRoute from "./components/PrivateRoute";
 import "./index.css";
 import { ToastProvider } from "./context/ToastContext";
@@ -119,6 +123,40 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/campaigns/browse"
+            element={
+              <PrivateRoute roles={["influencer"]}>
+                <BrowseCampaigns />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/campaigns/:id"
+            element={
+              <PrivateRoute roles={["influencer"]}>
+                <CampaignDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/influencer/profile"
+            element={
+              <PrivateRoute roles={["influencer"]}>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          {/*
+            <Route
+              path="/influencer/wallet"
+              element={
+                <PrivateRoute roles={["influencer"]}>
+                  <Wallet />
+                </PrivateRoute>
+              }
+            />
+          */}
         </Routes>
 
         <Footer />

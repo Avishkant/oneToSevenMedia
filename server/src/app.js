@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth");
 const campaignRoutes = require("./routes/campaigns");
 const applicationRoutes = require("./routes/applications");
 const adminRoutes = require("./routes/admins");
+const userRoutes = require("./routes/users");
 
 function createApp() {
   const app = express();
@@ -26,6 +27,8 @@ function createApp() {
   app.use("/api/applications", applicationRoutes);
   // mount admin routes
   app.use("/api/admins", adminRoutes);
+  // mount user routes
+  app.use("/api/users", userRoutes);
 
   return app;
 }

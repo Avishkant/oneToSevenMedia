@@ -24,8 +24,11 @@ const userSchema = new mongoose.Schema(
     instagram: { type: String },
     followersCount: { type: Number, default: 0 },
     socialPlatforms: [{ type: String }],
+    // map of platform -> url
+    socialProfiles: { type: Map, of: String },
     categories: [{ type: String }],
     languages: [{ type: String }],
+    collaborationInterests: [{ type: String }],
     gender: { type: String },
     dob: { type: Date },
     employmentStatus: { type: String },

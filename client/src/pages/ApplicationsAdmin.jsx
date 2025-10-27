@@ -55,9 +55,25 @@ export default function ApplicationsAdmin() {
     }
     try {
       const token = auth?.token || localStorage.getItem("accessToken");
+      // send optional comment if present for this app
+      const comment =
+        (actionState &&
+          actionState.app &&
+          actionState.app._id === id &&
+          actionState.comment) ||
+        undefined;
       const res = await fetch(`/api/applications/${id}/${verb}`, {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: comment
+          ? JSON.stringify({
+              comment,
+              reason: verb === "reject" ? actionState.reason : undefined,
+            })
+          : undefined,
       });
       if (!res.ok) throw new Error("Action failed");
       await res.json();
@@ -71,6 +87,19 @@ export default function ApplicationsAdmin() {
     }
   };
 
+  // action modal state: open when admin wants to approve/reject with optional comment
+  const [actionState, setActionState] = useState(null);
+  const openActionModal = (app, verb) =>
+    setActionState({ open: true, app, verb, comment: "", reason: "" });
+  const closeActionModal = () => setActionState(null);
+  const confirmActionModal = async () => {
+    if (!actionState) return;
+    const { app, verb } = actionState;
+    // call act which reads comment from actionState
+    await act(app._id, verb);
+    closeActionModal();
+  };
+
   // UI helpers: expansion and modal
   const [expanded, setExpanded] = useState({});
   const [selectedApp, setSelectedApp] = useState(null);
@@ -78,6 +107,15 @@ export default function ApplicationsAdmin() {
     setExpanded((s) => ({ ...s, [campId]: !s[campId] }));
   const openDetails = (app) => setSelectedApp(app);
   const closeDetails = () => setSelectedApp(null);
+
+  // close details modal on Escape key
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") closeDetails();
+    }
+    if (selectedApp) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selectedApp]);
 
   // auto-load all applications for admin/superadmin on mount
   useEffect(() => {
@@ -108,10 +146,18 @@ export default function ApplicationsAdmin() {
               placeholder="Influencer id"
               className="px-3 py-2 rounded bg-white/3"
             />
-            <button onClick={loadFor} className="btn-primary">
+            <button
+              onClick={loadFor}
+              disabled={loading}
+              className="btn-primary"
+            >
               Load
             </button>
-            <button onClick={loadFor} className="btn-primary bg-slate-600 ml-2">
+            <button
+              onClick={loadFor}
+              disabled={loading}
+              className="btn-primary bg-slate-600 ml-2"
+            >
               Refresh
             </button>
             <div className="ml-auto text-sm text-slate-400">
@@ -121,17 +167,42 @@ export default function ApplicationsAdmin() {
         </div>
 
         <div className="glass p-4 rounded">
-          {loading && <div>Loading...</div>}
-          {!loading && apps.length === 0 && (
-            <div className="text-sm text-slate-300">No applications.</div>
-          )}
+          <div className="flex gap-2 items-center">
+            <input
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="Influencer id"
+              className="px-3 py-2 rounded bg-white/3 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            />
+            <button
+              onClick={loadFor}
+              disabled={loading}
+              className="btn-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              Load
+            </button>
+            <button
+              onClick={loadFor}
+              disabled={loading}
+              className="btn-primary bg-slate-600 ml-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              Refresh
+            </button>
+            <div className="ml-auto text-sm text-slate-400">
+              Showing {apps.length} application{apps.length !== 1 ? "s" : ""}
+            </div>
+          </div>
+        </div>
 
-          <div className="grid gap-4 md:grid-cols-2 mt-2">
-            {Object.values(byCampaign).map((g) => {
-              const campId = g.campaign?._id || Math.random();
-              const isExpanded = Boolean(expanded[campId]);
+        <div className="mt-6">
+          {/* campaign grouped cards */}
+          {Object.keys(byCampaign).length === 0 ? (
+            <div className="text-slate-500 p-4">No applications found.</div>
+          ) : (
+            Object.entries(byCampaign).map(([campId, g]) => {
+              const isExpanded = !!expanded[campId];
               return (
-                <div key={campId} className="p-4 bg-white/3 rounded">
+                <div key={campId} className="mb-4 p-4 bg-white/2 rounded">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3">
@@ -194,13 +265,13 @@ export default function ApplicationsAdmin() {
                           </div>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => act(a._id, "approve")}
+                              onClick={() => openActionModal(a, "approve")}
                               className="btn-primary bg-emerald-500"
                             >
                               Approve
                             </button>
                             <button
-                              onClick={() => act(a._id, "reject")}
+                              onClick={() => openActionModal(a, "reject")}
                               className="btn-primary bg-rose-500"
                             >
                               Reject
@@ -218,8 +289,8 @@ export default function ApplicationsAdmin() {
                   )}
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
           {selectedApp && (
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               <div
@@ -269,6 +340,19 @@ export default function ApplicationsAdmin() {
                   <div className="text-sm text-slate-300">
                     Status: {selectedApp.status}
                   </div>
+                  {selectedApp.adminComment && (
+                    <div className="text-sm text-slate-300 mt-2">
+                      <div className="font-semibold">Admin note</div>
+                      <div className="text-slate-400">
+                        {selectedApp.adminComment}
+                      </div>
+                    </div>
+                  )}
+                  {selectedApp.rejectionReason && (
+                    <div className="text-sm text-rose-400 mt-2">
+                      Rejection reason: {selectedApp.rejectionReason}
+                    </div>
+                  )}
                   <div className="pt-2">
                     <div className="text-sm font-semibold">Answers</div>
                     <div className="mt-1 text-sm text-slate-300">
@@ -304,6 +388,76 @@ export default function ApplicationsAdmin() {
                         ))
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {actionState && actionState.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={closeActionModal}
+              />
+              <div className="relative bg-slate-900 text-slate-100 rounded p-6 max-w-lg w-full mx-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-semibold">
+                    {actionState.verb === "approve"
+                      ? "Approve application"
+                      : "Reject application"}
+                  </div>
+                  <div>
+                    <button
+                      onClick={closeActionModal}
+                      className="px-3 py-1 bg-white/5 rounded"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="text-sm text-slate-400">
+                    Optional comment to the influencer
+                  </div>
+                  <textarea
+                    value={actionState.comment}
+                    onChange={(e) =>
+                      setActionState((s) => ({ ...s, comment: e.target.value }))
+                    }
+                    className="w-full mt-2 p-2 rounded bg-white/3 h-24"
+                    placeholder="Add a note for the influencer (why approved/rejected or next steps)"
+                  />
+                  {actionState.verb === "reject" && (
+                    <div className="mt-2">
+                      <div className="text-sm text-slate-400">
+                        Rejection reason (brief)
+                      </div>
+                      <input
+                        value={actionState.reason}
+                        onChange={(e) =>
+                          setActionState((s) => ({
+                            ...s,
+                            reason: e.target.value,
+                          }))
+                        }
+                        className="w-full mt-2 p-2 rounded bg-white/3"
+                        placeholder="Optional rejection reason"
+                      />
+                    </div>
+                  )}
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={confirmActionModal}
+                      className="btn-primary"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={closeActionModal}
+                      className="btn-primary bg-white/5"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>

@@ -2,6 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import {
+  PLATFORM_OPTIONS,
+  PLATFORM_META,
+  isValidUrl,
+} from "../constants/socialPlatforms";
 
 export default function InfluencerRegister() {
   const [name, setName] = useState("");
@@ -12,9 +17,6 @@ export default function InfluencerRegister() {
   const [city, setCity] = useState("");
   const [instagram, setInstagram] = useState("");
   const [followers, setFollowers] = useState("");
-  const [socialPlatforms, setSocialPlatforms] = useState("");
-  const [categories, setCategories] = useState("");
-  const [languages, setLanguages] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [employmentStatus, setEmploymentStatus] = useState("");
@@ -25,12 +27,108 @@ export default function InfluencerRegister() {
   const auth = useAuth();
   const toast = useToast();
 
-  const toArray = (s) => {
-    if (!s) return undefined;
-    return s
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
+  // selections handled with checkbox state below
+
+  // platform names pulled from central constants
+
+  const CATEGORY_OPTIONS = [
+    "Fashion",
+    "Food",
+    "Travel",
+    "Technology",
+    "Lifestyle",
+    "Fitness",
+    "Beauty",
+    "Parenting",
+    "Other",
+  ];
+
+  const COLLAB_OPTIONS = [
+    "Product Exchange",
+    "Service Exchange",
+    "Experience Exchange",
+    "Monetary Compensation",
+    "Brand Collaboration",
+    "Revenue Share",
+    "Cross Promotion",
+    "Affiliate Program",
+  ];
+
+  const LANGUAGE_OPTIONS = [
+    "English",
+    "Hindi",
+    "Marathi",
+    "Tamil",
+    "Telugu",
+    "Bengali",
+    "Gujarati",
+    "Punjabi",
+  ];
+
+  const [platformChecks, setPlatformChecks] = useState(() =>
+    PLATFORM_OPTIONS.reduce((acc, p) => ({ ...acc, [p]: false }), {})
+  );
+  const [platformUrls, setPlatformUrls] = useState(() =>
+    PLATFORM_OPTIONS.reduce((acc, p) => ({ ...acc, [p]: "" }), {})
+  );
+  const [platformErrors, setPlatformErrors] = useState(() =>
+    PLATFORM_OPTIONS.reduce((acc, p) => ({ ...acc, [p]: "" }), {})
+  );
+
+  const validatePlatformUrl = (p) => {
+    const url = platformUrls[p] && platformUrls[p].trim();
+    if (!platformChecks[p]) {
+      setPlatformErrors((e) => ({ ...e, [p]: "" }));
+      return true;
+    }
+    if (!url) {
+      setPlatformErrors((e) => ({ ...e, [p]: "URL required" }));
+      return false;
+    }
+    if (!isValidUrl(url)) {
+      setPlatformErrors((e) => ({
+        ...e,
+        [p]: "Enter a valid URL (https://...)",
+      }));
+      return false;
+    }
+    setPlatformErrors((e) => ({ ...e, [p]: "" }));
+    return true;
+  };
+
+  const [selectedCategories, setSelectedCategories] = useState(new Set());
+  const [selectedCollabs, setSelectedCollabs] = useState(new Set());
+  const [selectedLanguages, setSelectedLanguages] = useState(new Set());
+
+  const toggleCategory = (c) => {
+    setSelectedCategories((s) => {
+      const next = new Set(s);
+      if (next.has(c)) next.delete(c);
+      else {
+        if (next.size < 2) next.add(c);
+      }
+      return next;
+    });
+  };
+
+  const toggleCollab = (c) => {
+    setSelectedCollabs((s) => {
+      const next = new Set(s);
+      if (next.has(c)) next.delete(c);
+      else next.add(c);
+      return next;
+    });
+  };
+
+  const toggleLanguage = (c) => {
+    setSelectedLanguages((s) => {
+      const next = new Set(s);
+      if (next.has(c)) next.delete(c);
+      else {
+        if (next.size < 3) next.add(c);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -38,6 +136,21 @@ export default function InfluencerRegister() {
     setError(null);
     setLoading(true);
     try {
+      // validate selections
+      if (selectedCollabs.size === 0) {
+        throw new Error("Select at least one collaboration interest");
+      }
+      if (selectedCategories.size === 0) {
+        throw new Error("Select at least one content category (up to 2)");
+      }
+      // validate selected platform URLs
+      for (const p of PLATFORM_OPTIONS) {
+        if (platformChecks[p]) {
+          if (!validatePlatformUrl(p)) {
+            throw new Error(`Please fix ${p} URL`);
+          }
+        }
+      }
       const payload = {
         name,
         email,
@@ -47,9 +160,15 @@ export default function InfluencerRegister() {
         city: city || undefined,
         instagram: instagram || undefined,
         followersCount: followers ? Number(followers) : undefined,
-        socialPlatforms: toArray(socialPlatforms),
-        categories: toArray(categories),
-        languages: toArray(languages),
+        socialPlatforms: Array.from(Object.keys(platformChecks)).filter(
+          (p) => platformChecks[p]
+        ),
+        socialProfiles: Object.fromEntries(
+          Object.entries(platformUrls).filter(([, v]) => v && v.trim())
+        ),
+        categories: Array.from(selectedCategories),
+        languages: Array.from(selectedLanguages),
+        collaborationInterests: Array.from(selectedCollabs),
         gender: gender || undefined,
         dob: dob || undefined,
         employmentStatus: employmentStatus || undefined,
@@ -142,24 +261,130 @@ export default function InfluencerRegister() {
             placeholder="Followers count (optional)"
             className="px-3 py-2 rounded bg-white/3"
           />
-          <input
-            value={socialPlatforms}
-            onChange={(e) => setSocialPlatforms(e.target.value)}
-            placeholder="Social platforms (comma separated)"
-            className="px-3 py-2 rounded bg-white/3 col-span-2"
-          />
-          <input
-            value={categories}
-            onChange={(e) => setCategories(e.target.value)}
-            placeholder="Categories/niches (comma separated)"
-            className="px-3 py-2 rounded bg-white/3 col-span-2"
-          />
-          <input
-            value={languages}
-            onChange={(e) => setLanguages(e.target.value)}
-            placeholder="Languages (comma separated)"
-            className="px-3 py-2 rounded bg-white/3"
-          />
+          <div className="col-span-2">
+            <div className="text-sm text-slate-300 mb-2">
+              Social platforms (provide URL for selected)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {PLATFORM_OPTIONS.map((p) => (
+                <div key={p} className="flex items-start gap-2">
+                  <div className="pt-2">
+                    <input
+                      id={`plat-${p}`}
+                      type="checkbox"
+                      checked={!!platformChecks[p]}
+                      onChange={(e) =>
+                        setPlatformChecks((s) => ({
+                          ...s,
+                          [p]: e.target.checked,
+                        }))
+                      }
+                      aria-label={`Enable ${p}`}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label
+                      htmlFor={`plat-${p}`}
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
+                      <span aria-hidden>{PLATFORM_META[p]?.icon || "🔗"}</span>
+                      <span>{p}</span>
+                    </label>
+                    {platformChecks[p] && (
+                      <div className="mt-1">
+                        <input
+                          placeholder={`${p} URL`}
+                          value={platformUrls[p]}
+                          onChange={(e) =>
+                            setPlatformUrls((s) => ({
+                              ...s,
+                              [p]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => validatePlatformUrl(p)}
+                          aria-invalid={!!platformErrors[p]}
+                          aria-describedby={
+                            platformErrors[p] ? `err-${p}` : undefined
+                          }
+                          className="w-full px-2 py-1 rounded bg-white/3"
+                        />
+                        <div className="text-xs text-slate-400 mt-1">
+                          {PLATFORM_META[p]?.example}
+                        </div>
+                        {platformErrors[p] && (
+                          <div
+                            id={`err-${p}`}
+                            role="alert"
+                            className="text-xs text-rose-400 mt-1"
+                          >
+                            {platformErrors[p]}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="col-span-2">
+            <div className="text-sm text-slate-300 mb-2">
+              Content categories (select up to 2)
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORY_OPTIONS.map((c) => (
+                <button
+                  type="button"
+                  key={c}
+                  onClick={() => toggleCategory(c)}
+                  className={`px-3 py-1 rounded ${
+                    selectedCategories.has(c) ? "bg-indigo-500" : "bg-white/5"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="col-span-2">
+            <div className="text-sm text-slate-300 mb-2">
+              Collaboration interests (select at least 1)
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {COLLAB_OPTIONS.map((c) => (
+                <label key={c} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedCollabs.has(c)}
+                    onChange={() => toggleCollab(c)}
+                  />
+                  <span className="text-sm">{c}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm text-slate-300 mb-2">
+              Content languages (select up to 3)
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map((l) => (
+                <button
+                  type="button"
+                  key={l}
+                  onClick={() => toggleLanguage(l)}
+                  className={`px-3 py-1 rounded ${
+                    selectedLanguages.has(l) ? "bg-indigo-500" : "bg-white/5"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
           <select
             value={gender}
             onChange={(e) => setGender(e.target.value)}

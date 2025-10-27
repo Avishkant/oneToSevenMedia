@@ -74,20 +74,26 @@ export default function CampaignCard({
                     if (!auth?.token) return navigate("/influencer/login");
                     setShowApplyModal(true);
                   }}
-                  className="btn-primary"
+                  className="btn-primary w-full md:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  aria-pressed={isApplied}
                 >
                   {isApplied ? "Applied" : applying ? "Applying..." : "Apply"}
                 </button>
 
                 {showApplyModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={`apply-${id}-title`}
+                  >
                     <div
                       className="absolute inset-0 bg-black/50"
                       onClick={() => setShowApplyModal(false)}
                     />
                     <div className="relative z-10 w-full max-w-md bg-slate-800 p-6 rounded">
                       <h3 className="font-semibold text-lg mb-2">
-                        Apply to {title}
+                        <span id={`apply-${id}-title`}>Apply to {title}</span>
                       </h3>
                       <p className="text-sm text-slate-300 mb-4">
                         Please confirm your current follower count.
@@ -99,13 +105,14 @@ export default function CampaignCard({
                         onChange={(e) =>
                           setFollowersCount(Number(e.target.value))
                         }
-                        className="w-full px-3 py-2 rounded bg-white/5 mb-4"
+                        className="w-full px-3 py-2 rounded bg-white/5 mb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                        aria-label="Followers count"
                         placeholder="Followers count"
                       />
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => setShowApplyModal(false)}
-                          className="btn-primary bg-slate-600"
+                          className="btn-primary bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                         >
                           Cancel
                         </button>
@@ -148,7 +155,7 @@ export default function CampaignCard({
                               setApplying(false);
                             }
                           }}
-                          className="btn-primary bg-emerald-500"
+                          className="btn-primary bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                         >
                           {applying ? "Applying..." : "Submit"}
                         </button>

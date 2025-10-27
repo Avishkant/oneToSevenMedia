@@ -60,6 +60,17 @@ export default function MyApplications() {
                     Applied: {new Date(a.createdAt).toLocaleString()}
                   </div>
                 </div>
+                {a.adminComment && (
+                  <div className="mt-2 text-sm text-slate-300">
+                    <div className="font-semibold">Note from admin</div>
+                    <div className="text-slate-400">{a.adminComment}</div>
+                  </div>
+                )}
+                {a.rejectionReason && (
+                  <div className="mt-2 text-sm text-rose-400">
+                    Rejection reason: {a.rejectionReason}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

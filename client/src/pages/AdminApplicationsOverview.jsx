@@ -13,10 +13,9 @@ export default function AdminApplicationsOverview() {
     async function load() {
       setLoading(true);
       try {
+        const token = auth?.token || localStorage.getItem("accessToken");
         const res = await fetch(`/api/applications`, {
-          headers: auth?.token
-            ? { Authorization: `Bearer ${auth.token}` }
-            : undefined,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (!res.ok) throw new Error("Failed to load applications");
         const body = await res.json();
@@ -33,20 +32,17 @@ export default function AdminApplicationsOverview() {
 
   const act = async (id, verb) => {
     try {
+      const token = auth?.token || localStorage.getItem("accessToken");
       const res = await fetch(`/api/applications/${id}/${verb}`, {
         method: "POST",
-        headers: auth?.token
-          ? { Authorization: `Bearer ${auth.token}` }
-          : undefined,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error("Action failed");
       await res.json();
       toast?.add(`${verb}ed`, { type: "success" });
       // refresh
       const r = await fetch(`/api/applications`, {
-        headers: auth?.token
-          ? { Authorization: `Bearer ${auth.token}` }
-          : undefined,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (r.ok) setItems(await r.json());
     } catch (err) {
