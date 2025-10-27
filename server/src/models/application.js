@@ -18,7 +18,15 @@ const applicationSchema = new mongoose.Schema(
     followersAtApply: { type: Number },
     status: {
       type: String,
-      enum: ["applied", "reviewing", "approved", "rejected"],
+      // include order lifecycle statuses used by the controllers
+      enum: [
+        "applied",
+        "reviewing",
+        "approved",
+        "rejected",
+        "order_submitted",
+        "completed",
+      ],
       default: "applied",
     },
     reviewer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

@@ -26,7 +26,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="glass p-6 rounded-xl card-shadow">
             <h3 className="font-semibold">Campaigns</h3>
             <p className="text-sm text-slate-300 mt-2">
@@ -46,6 +46,21 @@ export default function AdminDashboard() {
             <div className="mt-4">
               <Link to="/admin/applications" className="btn-primary">
                 Review applications
+              </Link>
+            </div>
+          </div>
+          <div className="glass p-6 rounded-xl card-shadow">
+            <h3 className="font-semibold">Order Reviews</h3>
+            <p className="text-sm text-slate-300 mt-2">
+              Review submitted order forms, add comments, and approve or reject
+              payouts.
+            </p>
+            <div className="mt-4">
+              <Link
+                to="/admin/order-reviews"
+                className="btn-primary bg-emerald-600"
+              >
+                Open order reviews
               </Link>
             </div>
           </div>
