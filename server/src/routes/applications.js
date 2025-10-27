@@ -5,6 +5,10 @@ const {
   listAllApplications,
   approveApplication,
   rejectApplication,
+  submitOrder,
+  listOrders,
+  approveOrder,
+  rejectOrder,
 } = require("../controllers/applicationController");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
@@ -49,6 +53,26 @@ router.post(
   auth,
   requireRole("admin", "superadmin"),
   rejectApplication
+);
+
+// influencer submits order details for an approved application
+router.patch("/:id/order", auth, requireRole("influencer"), submitOrder);
+
+// admin: list submitted orders
+router.get("/orders", auth, requireRole("admin", "superadmin"), listOrders);
+
+router.post(
+  "/:id/order/approve",
+  auth,
+  requireRole("admin", "superadmin"),
+  approveOrder
+);
+
+router.post(
+  "/:id/order/reject",
+  auth,
+  requireRole("admin", "superadmin"),
+  rejectOrder
 );
 
 module.exports = router;

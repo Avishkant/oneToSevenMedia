@@ -14,7 +14,7 @@ router.get("/", auth, requireRole("superadmin"), adminController.listAdmins);
 router.get(
   "/influencers",
   auth,
-  requireRole("superadmin"),
+  requireRole("admin", "superadmin"),
   adminController.listInfluencers
 );
 router.get("/:id", auth, requireRole("superadmin"), adminController.getAdmin);

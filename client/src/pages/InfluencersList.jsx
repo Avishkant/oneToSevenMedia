@@ -20,6 +20,23 @@ export default function InfluencersList() {
     async function load() {
       setLoading(true);
       try {
+        async function fetchWithRefresh(url, opts = {}) {
+          let res = await fetch(url, opts);
+          if (res.status === 401 && auth && auth.refresh) {
+            const refreshed = await auth.refresh();
+            if (refreshed && refreshed.ok) {
+              const newToken =
+                auth?.token || localStorage.getItem("accessToken");
+              opts.headers = {
+                ...(opts.headers || {}),
+                ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+              };
+              res = await fetch(url, opts);
+            }
+          }
+          return res;
+        }
+
         const token = auth?.token || localStorage.getItem("accessToken");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         let url = "/api/admins/influencers";
@@ -31,7 +48,7 @@ export default function InfluencersList() {
           if (filter) qs.set("q", filter);
         }
         const full = qs.toString() ? `${url}?${qs.toString()}` : url;
-        const res = await fetch(full, { headers });
+        const res = await fetchWithRefresh(full, { headers });
         if (!res.ok) throw new Error("Unable to fetch");
         const body = await res.json();
         if (mounted) setItems(body || []);

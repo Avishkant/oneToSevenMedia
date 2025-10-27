@@ -114,10 +114,102 @@ async function listAllApplications(req, res) {
   }
 }
 
+// influencer submits order details after application approved
+async function submitOrder(req, res) {
+  const appId = req.params.id;
+  const userId = req.user && req.user.id;
+  const { orderId, amount, comment, screenshotUrl } = req.body || {};
+  if (!orderId || typeof amount === "undefined")
+    return res.status(400).json({ error: "missing_fields" });
+  try {
+    const app = await Application.findById(appId);
+    if (!app) return res.status(404).json({ error: "not_found" });
+    // only the influencer who owns the application can submit order
+    if (String(app.influencer) !== String(userId))
+      return res.status(403).json({ error: "forbidden" });
+    app.orderId = orderId;
+    app.campaignScreenshot = screenshotUrl || app.campaignScreenshot;
+    if (!app.payout) app.payout = {};
+    app.payout.amount = Number(amount);
+    app.payout.paid = false;
+    app.payout.paidAt = undefined;
+    if (comment) app.applicantComment = comment;
+    // mark as order submitted for admin review
+    app.status = "order_submitted";
+    await app.save();
+    res.json(app);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
+// admin: list submitted orders for review
+async function listOrders(req, res) {
+  try {
+    const items = await Application.find({ status: "order_submitted" })
+      .populate("campaign")
+      .populate("influencer", "name email phone followersCount");
+    res.json(items);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
+// admin approves an order (mark payout paid and set paidAt)
+async function approveOrder(req, res) {
+  const appId = req.params.id;
+  const reviewerId = req.user && req.user.id;
+  const { comment } = req.body || {};
+  try {
+    const app = await Application.findById(appId);
+    if (!app) return res.status(404).json({ error: "not_found" });
+    app.status = "completed";
+    app.reviewer = reviewerId;
+    if (!app.payout) app.payout = {};
+    app.payout.paid = true;
+    app.payout.paidAt = new Date();
+    if (comment) app.adminComment = comment;
+    await app.save();
+    res.json(app);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
+async function rejectOrder(req, res) {
+  const appId = req.params.id;
+  const reviewerId = req.user && req.user.id;
+  const { reason, comment } = req.body || {};
+  try {
+    const app = await Application.findById(appId);
+    if (!app) return res.status(404).json({ error: "not_found" });
+    app.status = "approved"; // revert to approved so influencer can resubmit
+    app.reviewer = reviewerId;
+    app.rejectionReason = reason;
+    if (comment) app.adminComment = comment;
+    await app.save();
+    res.json(app);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
 module.exports = {
   apply,
   listByInfluencer,
   listAllApplications,
   approveApplication,
   rejectApplication,
+  submitOrder,
+  listOrders,
+  approveOrder,
+  rejectOrder,
 };

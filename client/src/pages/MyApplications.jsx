@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import OrderModal from "../components/OrderModal";
 
 export default function MyApplications() {
   const auth = useAuth();
@@ -10,6 +11,8 @@ export default function MyApplications() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -17,8 +20,25 @@ export default function MyApplications() {
       if (!auth?.user) return;
       setLoading(true);
       try {
+        async function fetchWithRefresh(url, opts = {}) {
+          let res = await fetch(url, opts);
+          if (res.status === 401 && auth && auth.refresh) {
+            const refreshed = await auth.refresh();
+            if (refreshed && refreshed.ok) {
+              const newToken =
+                auth?.token || localStorage.getItem("accessToken");
+              opts.headers = {
+                ...(opts.headers || {}),
+                ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+              };
+              res = await fetch(url, opts);
+            }
+          }
+          return res;
+        }
+
         const token = auth?.token || localStorage.getItem("accessToken");
-        const res = await fetch(
+        const res = await fetchWithRefresh(
           `/api/applications/by-influencer/${auth.user.id}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -219,10 +239,45 @@ export default function MyApplications() {
                     ))}
                   </div>
                 )}
+
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="text-sm text-slate-400">
+                    Status: <span className="font-medium">{a.status}</span>
+                  </div>
+                  {a.status === "approved" && (
+                    <div>
+                      <button
+                        onClick={() => {
+                          setSelectedApp(a);
+                          setOrderModalOpen(true);
+                        }}
+                        className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
+                      >
+                        Submit Order
+                      </button>
+                    </div>
+                  )}
+                </div>
               </article>
             ))}
           </div>
         )}
+
+        <OrderModal
+          open={orderModalOpen}
+          onClose={() => {
+            setOrderModalOpen(false);
+            setSelectedApp(null);
+          }}
+          application={selectedApp}
+          token={auth?.token || localStorage.getItem("accessToken")}
+          onSuccess={(updated) => {
+            // replace updated application in list
+            setItems((prev) =>
+              prev.map((it) => (it._id === updated._id ? updated : it))
+            );
+          }}
+        />
       </div>
     </div>
   );
