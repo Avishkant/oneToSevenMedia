@@ -7,10 +7,11 @@ export default function CreateCampaign() {
   const [title, setTitle] = useState("");
   const [brandName, setBrandName] = useState("");
   const [category, setCategory] = useState("");
-  const [followersMin, setFollowersMin] = useState(0);
-  const [followersMax, setFollowersMax] = useState(0);
+  const [followersMin, setFollowersMin] = useState("");
+  const [followersMax, setFollowersMax] = useState("");
   const [location, setLocation] = useState("");
-  const [budget, setBudget] = useState(0);
+  const [requirements, setRequirements] = useState("");
+  const [budget, setBudget] = useState("");
   const [deliverables, setDeliverables] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,6 +30,7 @@ export default function CreateCampaign() {
         category,
         followersMin: Number(followersMin) || 0,
         followersMax: Number(followersMax) || 0,
+        requirements: requirements || undefined,
         budget: Number(budget) || 0,
         deliverables: deliverables
           ? deliverables
@@ -87,21 +89,29 @@ export default function CreateCampaign() {
             required
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            placeholder="Category"
+            placeholder="Category (e.g. Fitness & Food Influencers)"
             className="px-3 py-2 rounded bg-white/3"
           />
           <div className="grid grid-cols-2 gap-2">
             <input
               value={followersMin}
-              onChange={(e) => setFollowersMin(Number(e.target.value))}
-              placeholder="Followers min"
+              onChange={(e) =>
+                setFollowersMin(
+                  e.target.value === "" ? "" : Number(e.target.value)
+                )
+              }
+              placeholder="Followers min (e.g. 2000)"
               type="number"
               className="px-3 py-2 rounded bg-white/3"
             />
             <input
               value={followersMax}
-              onChange={(e) => setFollowersMax(Number(e.target.value))}
-              placeholder="Followers max"
+              onChange={(e) =>
+                setFollowersMax(
+                  e.target.value === "" ? "" : Number(e.target.value)
+                )
+              }
+              placeholder="Followers max (optional)"
               type="number"
               className="px-3 py-2 rounded bg-white/3"
             />
@@ -109,21 +119,29 @@ export default function CreateCampaign() {
           <input
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="Location (optional)"
+            placeholder="Location (e.g. PAN India, Mumbai)"
             className="px-3 py-2 rounded bg-white/3"
           />
-          {/* requirements removed from UI to simplify campaign creation */}
+          <textarea
+            value={requirements}
+            onChange={(e) => setRequirements(e.target.value)}
+            placeholder="Requirements (e.g. Make a 30s reel around the product)"
+            className="px-3 py-2 rounded bg-white/3"
+            rows={3}
+          />
           <input
             value={budget}
-            onChange={(e) => setBudget(Number(e.target.value))}
-            placeholder="Budget"
+            onChange={(e) =>
+              setBudget(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            placeholder="Budget (total, e.g. 500)"
             type="number"
             className="px-3 py-2 rounded bg-white/3"
           />
           <input
             value={deliverables}
             onChange={(e) => setDeliverables(e.target.value)}
-            placeholder="Deliverables (comma separated)"
+            placeholder="Deliverables (e.g. 1x Reel, 3x Stories)"
             className="px-3 py-2 rounded bg-white/3"
           />
           {/* timeline / questions removed from UI */}

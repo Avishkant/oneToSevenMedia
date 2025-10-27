@@ -1,5 +1,6 @@
 const express = require("express");
 const Campaign = require("../models/campaign");
+const Application = require("../models/application");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
 
@@ -100,5 +101,36 @@ router.patch(
     }
   }
 );
+
+// Delete a campaign (only superadmin)
+router.delete("/:id", auth, requireRole("superadmin"), async (req, res) => {
+  try {
+    const deleted = await Campaign.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "not_found" });
+    // cascade delete related applications
+    try {
+      const result = await Application.deleteMany({ campaign: deleted._id });
+      // eslint-disable-next-line no-console
+      console.log(
+        `Cascade-deleted ${
+          result.deletedCount || 0
+        } applications for campaign ${deleted._id}`
+      );
+    } catch (e) {
+      // log but don't fail the overall operation
+      // eslint-disable-next-line no-console
+      console.warn(
+        "Failed to cascade-delete applications for campaign",
+        req.params.id,
+        e
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+});
 
 module.exports = router;

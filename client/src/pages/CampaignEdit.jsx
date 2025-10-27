@@ -112,26 +112,28 @@ export default function CampaignEdit() {
           />
           <div className="grid grid-cols-2 gap-2">
             <input
-              value={campaign.followersMin}
+              value={campaign.followersMin || ""}
               onChange={(e) =>
                 setCampaign({
                   ...campaign,
-                  followersMin: Number(e.target.value),
+                  followersMin:
+                    e.target.value === "" ? "" : Number(e.target.value),
                 })
               }
-              placeholder="Followers min"
+              placeholder="Followers min (e.g. 2000)"
               type="number"
               className="px-3 py-2 rounded bg-white/3"
             />
             <input
-              value={campaign.followersMax}
+              value={campaign.followersMax || ""}
               onChange={(e) =>
                 setCampaign({
                   ...campaign,
-                  followersMax: Number(e.target.value),
+                  followersMax:
+                    e.target.value === "" ? "" : Number(e.target.value),
                 })
               }
-              placeholder="Followers max"
+              placeholder="Followers max (optional)"
               type="number"
               className="px-3 py-2 rounded bg-white/3"
             />
@@ -145,11 +147,14 @@ export default function CampaignEdit() {
             className="px-3 py-2 rounded bg-white/3"
           />
           <input
-            value={campaign.budget}
+            value={campaign.budget || ""}
             onChange={(e) =>
-              setCampaign({ ...campaign, budget: Number(e.target.value) })
+              setCampaign({
+                ...campaign,
+                budget: e.target.value === "" ? "" : Number(e.target.value),
+              })
             }
-            placeholder="Budget"
+            placeholder="Budget (total, e.g. 500)"
             type="number"
             className="px-3 py-2 rounded bg-white/3"
           />

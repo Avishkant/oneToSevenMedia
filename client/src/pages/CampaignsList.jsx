@@ -7,6 +7,11 @@ import useToast from "../context/useToast";
 
 export default function CampaignsList() {
   const [items, setItems] = useState([]);
+  const [deleteState, setDeleteState] = useState({
+    open: false,
+    id: null,
+    brand: "",
+  });
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const toast = useToast();
@@ -148,12 +153,18 @@ export default function CampaignsList() {
                         >
                           Edit
                         </Link>
-                        <Link
-                          to={`/admin/campaigns/${c._id}`}
-                          className="text-slate-300 hover:underline text-sm"
+                        <button
+                          onClick={() =>
+                            setDeleteState({
+                              open: true,
+                              id: c._id,
+                              brand: c.brandName,
+                            })
+                          }
+                          className="text-rose-300 hover:underline text-sm"
                         >
-                          View
-                        </Link>
+                          Delete
+                        </button>
                       </>
                     }
                   />
@@ -161,6 +172,68 @@ export default function CampaignsList() {
               );
             })}
           </motion.ul>
+
+          {/* Delete confirmation modal */}
+          {deleteState.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={() =>
+                  setDeleteState({ open: false, id: null, brand: "" })
+                }
+              />
+              <div className="relative bg-slate-900 text-slate-100 rounded p-6 max-w-md w-full mx-4">
+                <div className="text-lg font-semibold">Delete campaign</div>
+                <div className="mt-3 text-sm text-slate-300">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold">{deleteState.brand}</span>?
+                  This will also remove all related applications and cannot be
+                  undone.
+                </div>
+                <div className="mt-4 flex gap-2 justify-end">
+                  <button
+                    onClick={() =>
+                      setDeleteState({ open: false, id: null, brand: "" })
+                    }
+                    className="btn-primary bg-slate-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token =
+                          auth?.token || localStorage.getItem("accessToken");
+                        const res = await fetch(
+                          `/api/campaigns/${deleteState.id}`,
+                          {
+                            method: "DELETE",
+                            headers: token
+                              ? { Authorization: `Bearer ${token}` }
+                              : undefined,
+                          }
+                        );
+                        if (!res.ok) throw new Error("Delete failed");
+                        // remove from local list
+                        setItems((s) =>
+                          s.filter((i) => i._id !== deleteState.id)
+                        );
+                        toast?.add("Campaign deleted", { type: "success" });
+                        setDeleteState({ open: false, id: null, brand: "" });
+                      } catch (err) {
+                        toast?.add(err.message || "Delete failed", {
+                          type: "error",
+                        });
+                      }
+                    }}
+                    className="btn-primary bg-rose-500"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 flex items-center justify-between">
             <div className="text-sm text-slate-300">
