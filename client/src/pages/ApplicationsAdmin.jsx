@@ -3,36 +3,30 @@ import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
 
 export default function ApplicationsAdmin() {
-  const [userId, setUserId] = useState("");
+  const [brandName, setBrandName] = useState("");
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const toast = useToast();
 
   const loadFor = async () => {
+    // Fetch all applications and optionally filter by brand name on the client.
     setLoading(true);
     try {
-      let res;
       const token = auth?.token || localStorage.getItem("accessToken");
-      if (
-        !userId &&
-        auth?.user &&
-        ["admin", "superadmin"].includes(auth.user.role)
-      ) {
-        // admin/superadmin wants to see all applications
-        res = await fetch(`/api/applications`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-      } else {
-        if (!userId)
-          return toast?.add("Enter influencer id", { type: "error" });
-        res = await fetch(`/api/applications/by-influencer/${userId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-      }
+      const res = await fetch(`/api/applications`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!res.ok) throw new Error("Failed to load applications");
       const body = await res.json();
-      setApps(body);
+      let items = body || [];
+      if (brandName && brandName.trim() !== "") {
+        const q = brandName.trim().toLowerCase();
+        items = items.filter((a) =>
+          (a.campaign?.brandName || "").toLowerCase().includes(q)
+        );
+      }
+      setApps(items);
     } catch (err) {
       toast?.add(err.message || "Failed to load", { type: "error" });
     } finally {
@@ -120,8 +114,7 @@ export default function ApplicationsAdmin() {
   // auto-load all applications for admin/superadmin on mount
   useEffect(() => {
     if (auth?.user && ["admin", "superadmin"].includes(auth.user.role)) {
-      // only auto-load when there's no specific influencer id
-      if (!userId) loadFor();
+      loadFor();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth?.user?.role]);
@@ -141,9 +134,9 @@ export default function ApplicationsAdmin() {
         <div className="glass p-4 rounded mb-4">
           <div className="flex gap-2 items-center">
             <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="Influencer id"
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+              placeholder="Search by brand name"
               className="px-3 py-2 rounded bg-white/3"
             />
             <button
@@ -151,10 +144,13 @@ export default function ApplicationsAdmin() {
               disabled={loading}
               className="btn-primary"
             >
-              Load
+              Search
             </button>
             <button
-              onClick={loadFor}
+              onClick={() => {
+                setBrandName("");
+                loadFor();
+              }}
               disabled={loading}
               className="btn-primary bg-slate-600 ml-2"
             >
@@ -166,33 +162,7 @@ export default function ApplicationsAdmin() {
           </div>
         </div>
 
-        <div className="glass p-4 rounded">
-          <div className="flex gap-2 items-center">
-            <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="Influencer id"
-              className="px-3 py-2 rounded bg-white/3 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            />
-            <button
-              onClick={loadFor}
-              disabled={loading}
-              className="btn-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            >
-              Load
-            </button>
-            <button
-              onClick={loadFor}
-              disabled={loading}
-              className="btn-primary bg-slate-600 ml-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            >
-              Refresh
-            </button>
-            <div className="ml-auto text-sm text-slate-400">
-              Showing {apps.length} application{apps.length !== 1 ? "s" : ""}
-            </div>
-          </div>
-        </div>
+        {/* single brand search above; duplicate influencer-id inputs removed */}
 
         <div className="mt-6">
           {/* campaign grouped cards */}
@@ -340,6 +310,14 @@ export default function ApplicationsAdmin() {
                   <div className="text-sm text-slate-300">
                     Status: {selectedApp.status}
                   </div>
+                  {selectedApp.applicantComment && (
+                    <div className="text-sm text-slate-300 mt-2">
+                      <div className="font-semibold">Applicant note</div>
+                      <div className="text-slate-400">
+                        {selectedApp.applicantComment}
+                      </div>
+                    </div>
+                  )}
                   {selectedApp.adminComment && (
                     <div className="text-sm text-slate-300 mt-2">
                       <div className="font-semibold">Admin note</div>

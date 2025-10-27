@@ -48,7 +48,8 @@ async function rejectApplication(req, res) {
 
 async function apply(req, res) {
   const userId = req.body.influencer || (req.user && req.user.id);
-  const { campaignId, answers, sampleMedia, followersCount } = req.body || {};
+  const { campaignId, answers, sampleMedia, followersCount, comment } =
+    req.body || {};
   if (!campaignId || !userId)
     return res.status(400).json({ error: "missing_fields" });
   try {
@@ -69,6 +70,7 @@ async function apply(req, res) {
       influencer: userId,
       answers,
       sampleMedia,
+      applicantComment: comment,
       // accept 0 as a valid value; only treat null/undefined as missing
       followersAtApply:
         typeof followersCount !== "undefined" && followersCount !== null

@@ -14,6 +14,7 @@ const applicationSchema = new mongoose.Schema(
     },
     answers: [{ question: String, answer: String }],
     sampleMedia: [{ type: String }],
+    applicantComment: { type: String },
     followersAtApply: { type: Number },
     status: {
       type: String,
