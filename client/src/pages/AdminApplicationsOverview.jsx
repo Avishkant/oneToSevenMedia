@@ -62,7 +62,7 @@ export default function AdminApplicationsOverview() {
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <h1 className="text-2xl font-bold mb-4">Applications Overview</h1>
-        <div className="glass p-4 rounded">
+        <div className="glass p-4 rounded text-slate-200">
           {loading && <div>Loading...</div>}
           {!loading && Object.keys(grouped).length === 0 && (
             <div className="text-sm text-slate-300">No applications yet.</div>

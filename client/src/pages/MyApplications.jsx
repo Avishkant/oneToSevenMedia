@@ -108,18 +108,18 @@ export default function MyApplications() {
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <h1 className="text-2xl font-bold mb-4">My Applications</h1>
 
-        <div className="glass p-4 rounded mb-4 flex flex-col sm:flex-row gap-2 items-center">
+        <div className="glass p-4 rounded mb-4 flex flex-col sm:flex-row gap-2 items-center text-slate-900">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by brand or campaign"
-            className="px-3 py-2 rounded bg-white/3 w-full sm:w-1/3"
+            className="px-3 py-2 rounded bg-white/3 w-full sm:w-1/3 text-slate-400 placeholder:text-slate-400"
           />
 
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 rounded bg-white/3 w-full sm:w-1/4"
+            className="px-3 py-2 rounded bg-white/3 w-full sm:w-1/4 text-slate-600"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -132,7 +132,7 @@ export default function MyApplications() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded bg-white/3 w-full sm:w-1/5"
+            className="px-3 py-2 rounded bg-white/3 w-full sm:w-1/5 text-slate-600"
           >
             <option value="all">All statuses</option>
             <option value="pending">Pending</option>

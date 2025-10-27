@@ -75,7 +75,7 @@ export default function AdminOrders() {
           <h1 className="text-2xl font-bold">Submitted Orders</h1>
         </div>
 
-        <div className="glass p-4 rounded">
+        <div className="glass p-4 rounded text-slate-200">
           {loading && <div className="text-sm">Loading...</div>}
           {!loading && orders.length === 0 && (
             <div className="text-sm text-slate-300">No submitted orders.</div>

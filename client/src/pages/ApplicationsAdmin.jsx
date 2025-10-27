@@ -131,13 +131,13 @@ export default function ApplicationsAdmin() {
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <h1 className="text-2xl font-bold mb-4">Applications (admin)</h1>
-        <div className="glass p-4 rounded mb-4">
+        <div className="glass p-4 rounded mb-4 text-slate-200">
           <div className="flex gap-2 items-center">
             <input
               value={brandName}
               onChange={(e) => setBrandName(e.target.value)}
               placeholder="Search by brand name"
-              className="px-3 py-2 rounded bg-white/3"
+              className="px-3 py-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
             />
             <button
               onClick={loadFor}
@@ -402,7 +402,7 @@ export default function ApplicationsAdmin() {
                     onChange={(e) =>
                       setActionState((s) => ({ ...s, comment: e.target.value }))
                     }
-                    className="w-full mt-2 p-2 rounded bg-white/3 h-24"
+                    className="w-full mt-2 p-2 rounded bg-white/3 h-24 text-slate-900 placeholder:text-slate-500"
                     placeholder="Add a note for the influencer (why approved/rejected or next steps)"
                   />
                   {actionState.verb === "reject" && (
@@ -418,7 +418,7 @@ export default function ApplicationsAdmin() {
                             reason: e.target.value,
                           }))
                         }
-                        className="w-full mt-2 p-2 rounded bg-white/3"
+                        className="w-full mt-2 p-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
                         placeholder="Optional rejection reason"
                       />
                     </div>

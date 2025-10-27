@@ -147,7 +147,7 @@ export default function InfluencersList() {
           </Link>
         </div>
 
-        <div className="glass p-4 rounded">
+        <div className="glass p-4 rounded text-slate-200">
           {loading && <div className="text-sm">Loading...</div>}
           {!loading && items.length === 0 && (
             <div className="text-sm text-slate-300">No records found.</div>
@@ -185,7 +185,7 @@ export default function InfluencersList() {
                       setPage(1);
                     }}
                     placeholder="Search name or email"
-                    className="px-3 py-2 rounded bg-white/3 w-full sm:w-64"
+                    className="px-3 py-2 rounded bg-white/3 w-full sm:w-64 text-slate-900 placeholder:text-slate-500"
                   />
                   {viewMode === "influencers" && (
                     <>
@@ -193,12 +193,12 @@ export default function InfluencersList() {
                         value={minFollowers}
                         onChange={(e) => setMinFollowers(e.target.value)}
                         placeholder="Min followers"
-                        className="px-3 py-2 rounded bg-white/3 w-40"
+                        className="px-3 py-2 rounded bg-white/3 w-40 text-slate-900 placeholder:text-slate-500"
                       />
                       <select
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="px-3 py-2 rounded bg-white/3"
+                        className="px-3 py-2 rounded bg-white/3 text-slate-900"
                       >
                         <option value="">All categories</option>
                         {[

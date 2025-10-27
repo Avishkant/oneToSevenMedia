@@ -64,7 +64,7 @@ export default function CampaignsList() {
           </Link>
         </div>
 
-        <div className="glass p-4 rounded">
+        <div className="glass p-4 rounded text-slate-200">
           <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-2">
             <input
               value={category}
@@ -73,7 +73,7 @@ export default function CampaignsList() {
                 setPage(1);
               }}
               placeholder="Category"
-              className="px-3 py-2 rounded bg-white/3"
+              className="px-3 py-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
             />
             <input
               value={brand}
@@ -82,7 +82,7 @@ export default function CampaignsList() {
                 setPage(1);
               }}
               placeholder="Brand"
-              className="px-3 py-2 rounded bg-white/3"
+              className="px-3 py-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
             />
             <input
               value={minFollowers}
@@ -91,7 +91,7 @@ export default function CampaignsList() {
                 setPage(1);
               }}
               placeholder="Min followers"
-              className="px-3 py-2 rounded bg-white/3"
+              className="px-3 py-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
             />
             <div className="flex items-center">
               <button
