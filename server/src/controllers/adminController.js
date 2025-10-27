@@ -79,6 +79,32 @@ async function listAdmins(req, res) {
   }
 }
 
+async function listInfluencers(req, res) {
+  try {
+    const { q, category, minFollowers } = req.query || {};
+    const qObj = { role: "influencer" };
+    if (typeof minFollowers !== "undefined") {
+      qObj.followersCount = { $gte: Number(minFollowers) };
+    }
+    if (category) {
+      qObj.categories = category;
+    }
+    if (q) {
+      // simple text search across name and email
+      qObj.$or = [
+        { name: { $regex: q, $options: "i" } },
+        { email: { $regex: q, $options: "i" } },
+      ];
+    }
+    const users = await User.find(qObj).select("-password");
+    res.json(users);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
 async function getAdmin(req, res) {
   try {
     const admin = await User.findById(req.params.id).select("-password");
@@ -138,6 +164,7 @@ module.exports = {
   createSuperAdmin,
   createAdmin,
   listAdmins,
+  listInfluencers,
   getAdmin,
   updateAdmin,
   deleteAdmin,

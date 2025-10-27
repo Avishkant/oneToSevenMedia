@@ -110,7 +110,7 @@ function App() {
           <Route
             path="/admin/influencers"
             element={
-              <PrivateRoute roles={["admin", "superadmin"]}>
+              <PrivateRoute roles={["superadmin"]}>
                 <InfluencersList />
               </PrivateRoute>
             }
