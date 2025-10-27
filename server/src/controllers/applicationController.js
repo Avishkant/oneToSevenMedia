@@ -69,7 +69,11 @@ async function apply(req, res) {
       influencer: userId,
       answers,
       sampleMedia,
-      followersAtApply: followersCount ? Number(followersCount) : undefined,
+      // accept 0 as a valid value; only treat null/undefined as missing
+      followersAtApply:
+        typeof followersCount !== "undefined" && followersCount !== null
+          ? Number(followersCount)
+          : undefined,
     });
     await app.save();
     res.status(201).json(app);

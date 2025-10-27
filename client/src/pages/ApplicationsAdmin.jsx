@@ -259,7 +259,7 @@ export default function ApplicationsAdmin() {
                               <div className="text-sm text-slate-400">
                                 {a.influencer?.email ? a.influencer.email : ""}{" "}
                                 • Status: {a.status} • Followers:{" "}
-                                {a.followersAtApply || "-"}
+                                {a.followersAtApply ?? "-"}
                               </div>
                             </div>
                           </div>
@@ -335,7 +335,7 @@ export default function ApplicationsAdmin() {
                     Email: {selectedApp.influencer?.email || "-"}
                   </div>
                   <div className="text-sm text-slate-300">
-                    Followers at apply: {selectedApp.followersAtApply || "-"}
+                    Followers at apply: {selectedApp.followersAtApply ?? "-"}
                   </div>
                   <div className="text-sm text-slate-300">
                     Status: {selectedApp.status}

@@ -53,7 +53,7 @@ export default function MyApplications() {
                     </div>
                     <div className="text-sm text-slate-400">
                       Status: {a.status} • Followers at apply:{" "}
-                      {a.followersAtApply || "-"}
+                      {a.followersAtApply ?? "-"}
                     </div>
                   </div>
                   <div className="text-sm text-slate-300">

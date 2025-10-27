@@ -84,7 +84,7 @@ export default function AdminApplicationsOverview() {
                       </div>
                       <div className="text-sm text-slate-400">
                         Status: {a.status} • Followers:{" "}
-                        {a.followersAtApply || "-"}
+                        {a.followersAtApply ?? "-"}
                       </div>
                     </div>
                     <div className="flex gap-2">
