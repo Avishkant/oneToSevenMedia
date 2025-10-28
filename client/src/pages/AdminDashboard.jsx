@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Button from "../components/Button";
 
 export default function AdminDashboard() {
   const auth = useAuth();
@@ -33,9 +34,9 @@ export default function AdminDashboard() {
               Create and manage brand campaigns.
             </p>
             <div className="mt-4">
-              <Link to="/admin/campaigns" className="btn-primary">
+              <Button as={Link} to="/admin/campaigns" variant="primary">
                 Manage campaigns
-              </Link>
+              </Button>
             </div>
           </div>
           <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
@@ -44,9 +45,9 @@ export default function AdminDashboard() {
               Review influencer applications and approve payouts.
             </p>
             <div className="mt-4">
-              <Link to="/admin/applications" className="btn-primary">
+              <Button as={Link} to="/admin/applications" variant="primary">
                 Review applications
-              </Link>
+              </Button>
             </div>
           </div>
           <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
@@ -56,12 +57,9 @@ export default function AdminDashboard() {
               payouts.
             </p>
             <div className="mt-4">
-              <Link
-                to="/admin/order-reviews"
-                className="btn-primary bg-emerald-600"
-              >
+              <Button as={Link} to="/admin/order-reviews" variant="success">
                 Open order reviews
-              </Link>
+              </Button>
             </div>
           </div>
           <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
@@ -98,15 +96,15 @@ export default function AdminDashboard() {
           <div className="glass p-6 rounded-xl card-shadow">
             <h2 className="font-semibold">Quick actions</h2>
             <div className="mt-4 flex gap-3">
-              <Link
+              <Button
+                as={Link}
                 to="/admin/campaigns/create"
-                className="btn-primary inline-block text-center"
+                variant="primary"
+                className="inline-block text-center"
               >
                 Create campaign
-              </Link>
-              <button className="btn-primary bg-emerald-500 hover:bg-emerald-600">
-                Approve payouts
-              </button>
+              </Button>
+              <Button variant="success">Approve payouts</Button>
             </div>
           </div>
         </section>

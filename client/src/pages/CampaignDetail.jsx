@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Button from "../components/Button";
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -50,8 +51,8 @@ export default function CampaignDetail() {
           </div>
 
           <div className="mt-6 flex gap-3">
-            <button className="btn-primary">Apply</button>
-            <button className="btn-primary bg-white/5">Chat</button>
+            <Button variant="primary">Apply</Button>
+            <Button variant="ghost">Chat</Button>
           </div>
         </div>
       </div>

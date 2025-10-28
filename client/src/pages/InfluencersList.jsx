@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import Button from "../components/Button";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
 
@@ -216,34 +217,35 @@ export default function InfluencersList() {
                       </select>
                     </>
                   )}
-                  <button
+                  <Button
                     onClick={() => {
                       setFilter("");
                       setCategoryFilter("");
                       setMinFollowers("");
                     }}
-                    className="btn-primary bg-slate-600"
+                    variant="primary"
+                    className="bg-slate-600"
                   >
                     Reset
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               <div className="mb-3 flex items-center gap-2">
-                <button
+                <Button
                   onClick={() => exportCsv("influencers_all.csv", items)}
-                  className="btn-primary"
+                  variant="primary"
                 >
                   Export all
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() =>
                     exportCsv("influencers_filtered.csv", getFiltered())
                   }
-                  className="btn-primary bg-emerald-600"
+                  variant="success"
                 >
                   Export filtered
-                </button>
+                </Button>
               </div>
 
               <div className="overflow-x-auto">
@@ -297,14 +299,14 @@ export default function InfluencersList() {
                   {Math.max(1, Math.ceil(getFiltered().length / pageSize))}
                 </div>
                 <div className="flex gap-2">
-                  <button
+                  <Button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="btn-primary"
+                    variant="primary"
                   >
                     Prev
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() =>
                       setPage((p) =>
                         Math.min(
@@ -320,10 +322,10 @@ export default function InfluencersList() {
                       page >=
                       Math.max(1, Math.ceil(getFiltered().length / pageSize))
                     }
-                    className="btn-primary"
+                    variant="primary"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

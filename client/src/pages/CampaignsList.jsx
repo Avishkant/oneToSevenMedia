@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import Button from "../components/Button";
 import { motion } from "framer-motion";
+// ensure linters don't complain during iterative edits
+void motion;
 import CampaignCard from "../components/CampaignCard";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
@@ -94,17 +97,17 @@ export default function CampaignsList() {
               className="px-3 py-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
             />
             <div className="flex items-center">
-              <button
+              <Button
                 onClick={() => {
                   setCategory("");
                   setBrand("");
                   setMinFollowers("");
                   setPage(1);
                 }}
-                className="btn-primary"
+                variant="primary"
               >
                 Reset
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -153,7 +156,9 @@ export default function CampaignsList() {
                         >
                           Edit
                         </Link>
-                        <button
+                        <Button
+                          variant="danger"
+                          size="sm"
                           onClick={() =>
                             setDeleteState({
                               open: true,
@@ -161,10 +166,10 @@ export default function CampaignsList() {
                               brand: c.brandName,
                             })
                           }
-                          className="text-rose-300 hover:underline text-sm"
+                          className="text-sm"
                         >
                           Delete
-                        </button>
+                        </Button>
                       </>
                     }
                   />
@@ -191,15 +196,16 @@ export default function CampaignsList() {
                   undone.
                 </div>
                 <div className="mt-4 flex gap-2 justify-end">
-                  <button
+                  <Button
                     onClick={() =>
                       setDeleteState({ open: false, id: null, brand: "" })
                     }
-                    className="btn-primary bg-slate-600"
+                    variant="primary"
+                    className="bg-slate-600"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={async () => {
                       try {
                         const token =
@@ -226,10 +232,11 @@ export default function CampaignsList() {
                         });
                       }
                     }}
-                    className="btn-primary bg-rose-500"
+                    variant="danger"
+                    className="bg-rose-500"
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -240,20 +247,20 @@ export default function CampaignsList() {
               Page {page} of {totalPages}
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="btn-primary"
+                variant="primary"
               >
                 Prev
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="btn-primary"
+                variant="primary"
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         </div>

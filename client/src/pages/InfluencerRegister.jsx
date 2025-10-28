@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
@@ -416,9 +417,14 @@ export default function InfluencerRegister() {
           />
 
           <div className="col-span-2 mt-3">
-            <button disabled={loading} className="btn-primary w-full">
+            <Button
+              disabled={loading}
+              type="submit"
+              variant="primary"
+              className="w-full"
+            >
               {loading ? "Creating..." : "Create account"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

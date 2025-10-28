@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
@@ -69,7 +70,9 @@ export default function InfluencerLogin() {
             placeholder="Password"
             className="px-3 py-2 rounded bg-white/3"
           />
-          <button className="btn-primary mt-3">Sign in</button>
+          <Button type="submit" variant="primary" className="mt-3">
+            Sign in
+          </Button>
         </form>
         <div className="mt-4 text-sm text-slate-300">
           Don't have an account?{" "}

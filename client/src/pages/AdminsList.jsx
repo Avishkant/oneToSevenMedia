@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import Button from "../components/Button";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
 import CreateAdminModal from "../components/CreateAdminModal";
@@ -116,12 +117,9 @@ export default function AdminsList() {
                   placeholder="Search name or email"
                   className="px-3 py-2 rounded bg-white/3"
                 />
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="btn-primary"
-                >
+                <Button onClick={() => setShowModal(true)} variant="primary">
                   Create admin
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -162,20 +160,20 @@ export default function AdminsList() {
                 Page {page} of {totalPages}
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="btn-primary"
+                  variant="primary"
                 >
                   Prev
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="btn-primary"
+                  variant="primary"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           </div>

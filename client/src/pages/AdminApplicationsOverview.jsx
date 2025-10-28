@@ -1,6 +1,136 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+import Button from "../components/Button";
+// satisfy some linters during iterative edits
+void motion;
+
+// CampaignGroupCard: renders campaign header (brand, title, count) and collapsible list of apps
+function CampaignGroupCard({ campaign, apps, count, onAction }) {
+  const [open, setOpen] = useState(true);
+
+  const brandName = campaign?.brandName || campaign?.title || "(unknown)";
+  const brandLogo = campaign?.brandLogo || campaign?.image || null;
+  const subtitle = campaign?.title || campaign?.category || "";
+
+  return (
+    <div>
+      <div
+        role="button"
+        onClick={() => setOpen((s) => !s)}
+        className="glass p-3 rounded-md flex items-center justify-between cursor-pointer card-hover"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center text-sm text-slate-200 overflow-hidden">
+            {brandLogo ? (
+              <img
+                src={brandLogo}
+                alt={brandName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              (brandName || "?")
+                .split(" ")
+                .map((s) => (s && s[0]) || "")
+                .slice(0, 2)
+                .join("")
+            )}
+          </div>
+          <div>
+            <div className="text-base font-semibold text-slate-100">
+              {brandName}
+            </div>
+            {subtitle && (
+              <div className="text-sm text-slate-400">{subtitle}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-300">
+            {count} app{count !== 1 ? "s" : ""}
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            aria-expanded={open}
+            className="p-2 rounded-md bg-white/3 hover:bg-white/6"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((s) => !s);
+            }}
+          >
+            <motion.svg
+              className={`w-4 h-4 text-slate-200 transform ${
+                open ? "rotate-180" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                d="M6 9l6 6 6-6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </motion.svg>
+          </motion.button>
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            layout
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.28 }}
+            className="mt-3 space-y-3"
+          >
+            {apps.map((a) => (
+              <motion.li
+                layout
+                key={a._id}
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.2 }}
+                className="py-3 flex items-center justify-between glass p-3 rounded-md card-shadow"
+              >
+                <div>
+                  <div className="font-medium text-slate-100">
+                    {a.influencer?.name || a.influencer}
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Status: {a.status} • Followers: {a.followersAtApply ?? "-"}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="success"
+                    onClick={() => onAction(a._id, "approve")}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => onAction(a._id, "reject")}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </motion.li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function AdminApplicationsOverview() {
   const auth = useAuth();
@@ -94,54 +224,38 @@ export default function AdminApplicationsOverview() {
               </div>
               <div className="text-sm text-slate-300">No applications yet.</div>
               <div className="mt-3">
-                <a href="/admin/campaigns/create" className="btn-gradient">
+                <Button
+                  as="a"
+                  href="/admin/campaigns/create"
+                  variant="gradient"
+                >
                   Create campaign
-                </a>
+                </Button>
               </div>
             </div>
           )}
-          {Object.values(grouped).map((g) => (
-            <div
-              key={g.campaign?._id || Math.random()}
-              className="mb-6 animate-fadeInUp"
-            >
-              <div className="font-semibold">
-                {g.campaign?.brandName || "(unknown campaign)"}
-              </div>
-              <ul className="divide-y divide-white/6 mt-2">
-                {g.apps.map((a) => (
-                  <li
-                    key={a._id}
-                    className="py-3 flex items-center justify-between glass p-3 rounded-md card-shadow transition-transform hover:translate-x-1"
-                  >
-                    <div>
-                      <div className="font-medium">
-                        {a.influencer?.name || a.influencer}
-                      </div>
-                      <div className="text-sm text-slate-400">
-                        Status: {a.status} • Followers:{" "}
-                        {a.followersAtApply ?? "-"}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => act(a._id, "approve")}
-                        className="btn-primary bg-emerald-500 transition-transform hover:scale-105"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => act(a._id, "reject")}
-                        className="btn-primary bg-rose-500 transition-transform hover:scale-105"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+
+          <div className="space-y-6">
+            <AnimatePresence>
+              {Object.entries(grouped).map(([key, g]) => (
+                <motion.div
+                  key={key}
+                  layout
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.28 }}
+                >
+                  <CampaignGroupCard
+                    campaign={g.campaign}
+                    apps={g.apps}
+                    count={(g.apps || []).length}
+                    onAction={act}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </div>

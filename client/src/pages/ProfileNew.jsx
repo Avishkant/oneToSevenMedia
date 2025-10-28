@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import Button from "../components/Button";
 import {
   PLATFORM_OPTIONS,
   PLATFORM_META,
@@ -442,15 +443,12 @@ export default function ProfileNew() {
           </div>
 
           <div className="flex gap-2">
-            <button className="btn-primary" onClick={handleSave}>
+            <Button variant="primary" onClick={handleSave}>
               Save changes
-            </button>
-            <button
-              className="btn-primary bg-white/5"
-              onClick={() => setIsEditing(false)}
-            >
+            </Button>
+            <Button variant="ghost" onClick={() => setIsEditing(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

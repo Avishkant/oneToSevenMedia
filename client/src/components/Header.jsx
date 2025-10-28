@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
+import Button from "./Button";
 import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
@@ -154,9 +155,9 @@ export default function Header() {
           )}
 
           {!user ? (
-            <Link to="/influencer/login" className="btn-primary">
+            <Button as={Link} to="/influencer/login" variant="primary">
               Influencer login
-            </Link>
+            </Button>
           ) : (
             <div className="relative">
               <button
