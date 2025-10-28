@@ -65,10 +65,46 @@ export default function AdminApplicationsOverview() {
         <div className="glass p-4 rounded text-slate-200">
           {loading && <div>Loading...</div>}
           {!loading && Object.keys(grouped).length === 0 && (
-            <div className="text-sm text-slate-300">No applications yet.</div>
+            <div className="py-8 text-center">
+              <div className="empty-illu" aria-hidden>
+                <svg viewBox="0 0 120 80" className="w-full h-full">
+                  <g
+                    fill="none"
+                    stroke="#9CA3AF"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  >
+                    <circle className="dot" cx="30" cy="40" r="6" />
+                    <circle
+                      className="dot"
+                      cx="60"
+                      cy="40"
+                      r="6"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <circle
+                      className="dot"
+                      cx="90"
+                      cy="40"
+                      r="6"
+                      style={{ animationDelay: "300ms" }}
+                    />
+                  </g>
+                </svg>
+              </div>
+              <div className="text-sm text-slate-300">No applications yet.</div>
+              <div className="mt-3">
+                <a href="/admin/campaigns/create" className="btn-gradient">
+                  Create campaign
+                </a>
+              </div>
+            </div>
           )}
           {Object.values(grouped).map((g) => (
-            <div key={g.campaign?._id || Math.random()} className="mb-6">
+            <div
+              key={g.campaign?._id || Math.random()}
+              className="mb-6 animate-fadeInUp"
+            >
               <div className="font-semibold">
                 {g.campaign?.brandName || "(unknown campaign)"}
               </div>
@@ -76,7 +112,7 @@ export default function AdminApplicationsOverview() {
                 {g.apps.map((a) => (
                   <li
                     key={a._id}
-                    className="py-3 flex items-center justify-between"
+                    className="py-3 flex items-center justify-between glass p-3 rounded-md card-shadow transition-transform hover:translate-x-1"
                   >
                     <div>
                       <div className="font-medium">
@@ -90,13 +126,13 @@ export default function AdminApplicationsOverview() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => act(a._id, "approve")}
-                        className="btn-primary bg-emerald-500"
+                        className="btn-primary bg-emerald-500 transition-transform hover:scale-105"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => act(a._id, "reject")}
-                        className="btn-primary bg-rose-500"
+                        className="btn-primary bg-rose-500 transition-transform hover:scale-105"
                       >
                         Reject
                       </button>

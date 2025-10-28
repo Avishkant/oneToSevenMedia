@@ -27,7 +27,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="glass p-6 rounded-xl card-shadow">
+          <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
             <h3 className="font-semibold">Campaigns</h3>
             <p className="text-sm text-slate-300 mt-2">
               Create and manage brand campaigns.
@@ -38,7 +38,7 @@ export default function AdminDashboard() {
               </Link>
             </div>
           </div>
-          <div className="glass p-6 rounded-xl card-shadow">
+          <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
             <h3 className="font-semibold">Applications</h3>
             <p className="text-sm text-slate-300 mt-2">
               Review influencer applications and approve payouts.
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
               </Link>
             </div>
           </div>
-          <div className="glass p-6 rounded-xl card-shadow">
+          <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
             <h3 className="font-semibold">Order Reviews</h3>
             <p className="text-sm text-slate-300 mt-2">
               Review submitted order forms, add comments, and approve or reject
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
               </Link>
             </div>
           </div>
-          <div className="glass p-6 rounded-xl card-shadow">
+          <div className="glass p-6 rounded-xl card-shadow card-hover animate-fadeInUp">
             <h3 className="font-semibold">Users</h3>
             <p className="text-sm text-slate-300 mt-2">
               Manage admins, brands and influencers.

@@ -60,3 +60,94 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* subtle entrance animation used by cards and lists */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 360ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+/* small pop used on primary interactive elements */
+@keyframes popIn {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-popIn {
+  animation: popIn 260ms ease both;
+}
+
+/* utility to slightly lift a card on hover (keeps reduced-motion in mind) */
+.card-hover {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-6px) scale(1.01);
+}
+
+/* small ring/pulse for attention (eg. reviewing badge) */
+.status-pulse {
+  position: relative;
+}
+.status-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.02);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.status-pulse:hover::after {
+  opacity: 1;
+}
+
+/* icon button helpers */
+.btn-icon {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-medium;
+}
+.btn-icon .icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  transform: translateY(0);
+  transition: transform 180ms ease, opacity 140ms ease;
+}
+.btn-icon:hover .icon {
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* empty illustration */
+.empty-illu {
+  width: 220px;
+  height: 140px;
+  margin: 12px auto;
+}
+.empty-illu .dot {
+  transform-origin: center;
+  animation: dotBounce 900ms ease-in-out infinite;
+}
+@keyframes dotBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
