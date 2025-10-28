@@ -25,8 +25,16 @@ if (process.env.MONGO_URI) {
 if (require.main === module) {
   app.listen(PORT, () => {
     // eslint-disable-next-line no-console
-    console.log(`Server listening on http://localhost:${PORT}`);
+    const backendUrl = process.env.BACKEND_URL;
+    if (backendUrl) {
+      console.log(`Server listening on ${backendUrl}`);
+    } else {
+      console.log(`Server listening on port ${PORT}`);
+      console.warn(
+        "BACKEND_URL not set in environment — set BACKEND_URL in server/.env to the full backend origin."
+      );
+    }
   });
 }
- 
+
 module.exports = app;
