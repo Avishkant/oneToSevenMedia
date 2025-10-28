@@ -78,8 +78,9 @@ export default function AdminDashboard() {
                   Admins
                 </Link>
               )}
-              {Array.isArray(auth?.user?.permissions) &&
-              auth.user.permissions.includes("influencers:view") ? (
+              {auth?.user?.role === "superadmin" ||
+              (Array.isArray(auth?.user?.permissions) &&
+                auth.user.permissions.includes("influencers:view")) ? (
                 <Link
                   to="/admin/influencers"
                   className="text-indigo-300 hover:underline"
