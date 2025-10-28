@@ -33,6 +33,10 @@ export function AuthProvider({ children }) {
   );
   const [loading, setLoading] = useState(false);
 
+  // API base: use VITE_BACKEND_URL in prod (deployed frontend + backend on different origins),
+  // otherwise default to relative /api for local dev proxy.
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || "";
+
   useEffect(() => {
     if (token) {
       localStorage.setItem("accessToken", token);
@@ -41,16 +45,40 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("accessToken");
       setUser(null);
     }
-  }, [token]);
+  }, [token, API_BASE]);
+
+  // When a token is present for an admin, fetch the authoritative profile
+  // (which includes permissions) so the UI has accurate permission info.
+  useEffect(() => {
+    let mounted = true;
+    async function loadProfile() {
+      if (!token) return;
+      const jwtUser = parseJwt(token);
+      if (!jwtUser) return;
+      // only fetch for admin or superadmin to get permissions
+      if (jwtUser.role === "admin" || jwtUser.role === "superadmin") {
+        try {
+          const res = await fetch(`${API_BASE}/api/admins/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) return;
+          const body = await res.json();
+          if (!mounted) return;
+          // merge token-derived fields (id, role) with fresh profile including permissions
+          setUser({ ...jwtUser, ...(body || {}) });
+        } catch {
+          // ignore; keep token-derived user
+        }
+      }
+    }
+    loadProfile();
+    return () => (mounted = false);
+  }, [token, API_BASE]);
 
   useEffect(() => {
     if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
     else localStorage.removeItem("refreshToken");
   }, [refreshToken]);
-
-  // API base: use VITE_BACKEND_URL in prod (deployed frontend + backend on different origins),
-  // otherwise default to relative /api for local dev proxy.
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || "";
 
   const login = async ({ email, password }) => {
     setLoading(true);
@@ -68,6 +96,24 @@ export function AuthProvider({ children }) {
         if (body.refreshToken) setRefreshToken(body.refreshToken);
       }
       const parsed = body.token ? parseJwt(body.token) : null;
+      // fetch full admin profile (permissions) when logging in as admin
+      if (parsed && (parsed.role === "admin" || parsed.role === "superadmin")) {
+        try {
+          const res2 = await fetch(`${API_BASE}/api/admins/me`, {
+            headers: { Authorization: `Bearer ${body.token}` },
+          });
+          if (res2.ok) {
+            const full = await res2.json();
+            setUser({ ...parsed, ...(full || {}) });
+          } else {
+            setUser(parsed);
+          }
+        } catch {
+          setUser(parsed);
+        }
+      } else {
+        setUser(parsed);
+      }
       setLoading(false);
       return { ok: true, body, user: parsed };
     } catch (err) {

@@ -60,6 +60,19 @@ export default function Header() {
           .toUpperCase()
       : "";
 
+  const hasPerm = (key) =>
+    !!(
+      user &&
+      Array.isArray(user.permissions) &&
+      user.permissions.includes(key)
+    );
+
+  const canCampaign = hasPerm("campaigns:manage");
+  const canCampaignCreate = hasPerm("campaign:create");
+  const canApplications = hasPerm("applications:review");
+  const canOrders = hasPerm("orders:review");
+  const canPayments = hasPerm("payouts:approve");
+
   return (
     <header className="py-6 border-b border-white/6 bg-gradient-to-b from-transparent to-black/10">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 flex items-center justify-between">
@@ -83,9 +96,45 @@ export default function Header() {
             </>
           ) : user && (role === "admin" || role === "superadmin") ? (
             <>
-              <Link to="/admin/campaigns" className="hover:text-white">
-                Campaigns
-              </Link>
+              {canCampaign ? (
+                <Link to="/admin/campaigns" className="hover:text-white">
+                  Campaigns
+                </Link>
+              ) : (
+                <span className="text-slate-500">Campaigns</span>
+              )}
+
+              {/* optional create link/button - shown only when admin has create permission */}
+              {canCampaignCreate && (
+                <Link to="/admin/campaigns/create" className="hover:text-white">
+                  Create campaign
+                </Link>
+              )}
+
+              {canApplications ? (
+                <Link to="/admin/applications" className="hover:text-white">
+                  Applications
+                </Link>
+              ) : (
+                <span className="text-slate-500">Applications</span>
+              )}
+
+              {canOrders ? (
+                <Link to="/admin/order-reviews" className="hover:text-white">
+                  Order reviews
+                </Link>
+              ) : (
+                <span className="text-slate-500">Order reviews</span>
+              )}
+
+              {canPayments ? (
+                <Link to="/admin/payments" className="hover:text-white">
+                  Payments
+                </Link>
+              ) : (
+                <span className="text-slate-500">Payments</span>
+              )}
+
               <Link to="/admin/dashboard" className="hover:text-white">
                 Dashboard
               </Link>
@@ -197,9 +246,38 @@ export default function Header() {
               </>
             ) : user && (role === "admin" || role === "superadmin") ? (
               <>
-                <Link to="/admin/campaigns" className="block">
-                  Campaigns
-                </Link>
+                {canCampaign ? (
+                  <Link to="/admin/campaigns" className="block">
+                    Campaigns
+                  </Link>
+                ) : (
+                  <div className="block text-slate-500">Campaigns</div>
+                )}
+
+                {canApplications ? (
+                  <Link to="/admin/applications" className="block">
+                    Applications
+                  </Link>
+                ) : (
+                  <div className="block text-slate-500">Applications</div>
+                )}
+
+                {canOrders ? (
+                  <Link to="/admin/order-reviews" className="block">
+                    Order reviews
+                  </Link>
+                ) : (
+                  <div className="block text-slate-500">Order reviews</div>
+                )}
+
+                {canPayments ? (
+                  <Link to="/admin/payments" className="block">
+                    Payments
+                  </Link>
+                ) : (
+                  <div className="block text-slate-500">Payments</div>
+                )}
+
                 <Link to="/admin/dashboard" className="block">
                   Dashboard
                 </Link>

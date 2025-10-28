@@ -70,18 +70,25 @@ export default function AdminDashboard() {
               Manage admins, brands and influencers.
             </p>
             <div className="mt-4 flex flex-col gap-2">
-              <Link
-                to="/admin/admins"
-                className="text-indigo-300 hover:underline"
-              >
-                Admins
-              </Link>
-              <Link
-                to="/admin/influencers"
-                className="text-indigo-300 hover:underline"
-              >
-                Influencers
-              </Link>
+              {auth?.user?.role === "superadmin" && (
+                <Link
+                  to="/admin/admins"
+                  className="text-indigo-300 hover:underline"
+                >
+                  Admins
+                </Link>
+              )}
+              {Array.isArray(auth?.user?.permissions) &&
+              auth.user.permissions.includes("influencers:view") ? (
+                <Link
+                  to="/admin/influencers"
+                  className="text-indigo-300 hover:underline"
+                >
+                  Influencers
+                </Link>
+              ) : (
+                <div className="text-slate-500">Influencers</div>
+              )}
             </div>
           </div>
         </div>

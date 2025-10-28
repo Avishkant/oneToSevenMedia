@@ -3,6 +3,7 @@ const Campaign = require("../models/campaign");
 const Application = require("../models/application");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
+const { requirePermission } = require("../middleware/permissions");
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ router.post(
   "/",
   auth,
   requireRole("admin", "brand", "superadmin"),
+  requirePermission("campaign:create"),
   async (req, res) => {
     const body = req.body || {};
     const { title, brandName, category } = body;
@@ -66,6 +68,7 @@ router.patch(
   "/:id",
   auth,
   requireRole("admin", "brand", "superadmin"),
+  requirePermission("campaigns:manage"),
   async (req, res) => {
     try {
       const updates = req.body || {};

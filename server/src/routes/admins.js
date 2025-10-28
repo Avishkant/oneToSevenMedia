@@ -2,6 +2,7 @@ const express = require("express");
 const adminController = require("../controllers/adminController");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
+const { requirePermission } = require("../middleware/permissions");
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ router.get(
   "/influencers",
   auth,
   requireRole("admin", "superadmin"),
+  requirePermission("influencers:view"),
   adminController.listInfluencers
 );
 // return the authenticated admin's profile (admin or superadmin)

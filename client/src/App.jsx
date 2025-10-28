@@ -21,6 +21,7 @@ import BrowseCampaigns from "./pages/BrowseCampaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import Profile from "./pages/ProfileNew";
 import ProfileAdmin from "./pages/ProfileAdmin";
+import Unauthorized from "./pages/Unauthorized";
 // import Wallet from "./pages/Wallet";
 import PrivateRoute from "./components/PrivateRoute";
 import "./index.css";
@@ -72,7 +73,11 @@ function App() {
           <Route
             path="/admin/campaigns"
             element={
-              <PrivateRoute roles={["admin", "superadmin"]}>
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["campaigns:manage", "campaign:create"]}
+                permissionMode="any"
+              >
                 <CampaignsList />
               </PrivateRoute>
             }
@@ -80,7 +85,10 @@ function App() {
           <Route
             path="/admin/campaigns/create"
             element={
-              <PrivateRoute roles={["admin", "superadmin"]}>
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["campaign:create"]}
+              >
                 <CreateCampaign />
               </PrivateRoute>
             }
@@ -96,7 +104,10 @@ function App() {
           <Route
             path="/admin/applications"
             element={
-              <PrivateRoute roles={["admin", "superadmin"]}>
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["applications:review"]}
+              >
                 <ApplicationsAdmin />
               </PrivateRoute>
             }
@@ -112,7 +123,10 @@ function App() {
           <Route
             path="/admin/influencers"
             element={
-              <PrivateRoute roles={["admin", "superadmin"]}>
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["influencers:view"]}
+              >
                 <InfluencersList />
               </PrivateRoute>
             }
@@ -120,7 +134,10 @@ function App() {
           <Route
             path="/admin/order-reviews"
             element={
-              <PrivateRoute roles={["admin", "superadmin"]}>
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["orders:review"]}
+              >
                 <AdminOrderReviews />
               </PrivateRoute>
             }
@@ -165,6 +182,7 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/unauthorized" element={<Unauthorized />} />
           {/*
             <Route
               path="/influencer/wallet"
