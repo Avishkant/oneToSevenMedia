@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
+import Button from "../components/Button";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -99,14 +100,15 @@ export default function AdminOrders() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <button
+                      <Button
                         onClick={() => {
                           setSelected({ app: o, comment: "" });
                         }}
-                        className="btn-primary"
+                        variant="primary"
+                        size="sm"
                       >
                         Review
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -160,24 +162,27 @@ export default function AdminOrders() {
                     />
                   </div>
                   <div className="mt-4 flex gap-2 justify-end">
-                    <button
+                    <Button
                       onClick={() => act(selected.app._id, "approve")}
-                      className="btn-primary bg-emerald-600"
+                      variant="success"
+                      size="sm"
                     >
                       Approve
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => act(selected.app._id, "reject")}
-                      className="btn-primary bg-rose-600"
+                      variant="danger"
+                      size="sm"
                     >
                       Reject
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setSelected(null)}
-                      className="btn-primary bg-white/5"
+                      variant="ghost"
+                      size="sm"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

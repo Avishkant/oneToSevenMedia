@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
 import ApplicationCard from "../components/ApplicationCard";
+import Button from "../components/Button";
 
 export default function ApplicationsAdmin() {
   const [brandName, setBrandName] = useState("");
@@ -145,23 +146,20 @@ export default function ApplicationsAdmin() {
               placeholder="Search by brand name"
               className="px-3 py-2 rounded bg-white/3 text-slate-900 placeholder:text-slate-500"
             />
-            <button
-              onClick={loadFor}
-              disabled={loading}
-              className="btn-primary"
-            >
+            <Button onClick={loadFor} disabled={loading} variant="primary">
               Search
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 setBrandName("");
                 loadFor();
               }}
               disabled={loading}
-              className="btn-primary bg-slate-600 ml-2"
+              variant="primary"
+              className="bg-slate-600 ml-2"
             >
               Refresh
-            </button>
+            </Button>
             <div className="ml-auto text-sm text-slate-400">
               Showing {apps.length} application{apps.length !== 1 ? "s" : ""}
             </div>
@@ -240,28 +238,31 @@ export default function ApplicationsAdmin() {
                     </div>
                   </div>
                   <div>
-                    <button
+                    <Button
                       onClick={closeDetails}
-                      className="px-3 py-1 bg-white/5 rounded"
+                      variant="ghost"
+                      className="px-3 py-1"
                     >
                       Close
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-3">
                   <div className="text-sm text-slate-300">
                     Influencer:{" "}
-                    <a
-                      className="font-medium hover:underline"
+                    <Button
+                      as="a"
                       href={`/admin/influencers/${
                         selectedApp.influencer?._id || selectedApp.influencer
                       }`}
                       target="_blank"
                       rel="noreferrer"
+                      variant="ghost"
+                      className="font-medium"
                     >
                       {selectedApp.influencer?.name || selectedApp.influencer}
-                    </a>
+                    </Button>
                   </div>
                   <div className="text-sm text-slate-300">
                     Email: {selectedApp.influencer?.email || "-"}
@@ -348,12 +349,13 @@ export default function ApplicationsAdmin() {
                       : "Reject application"}
                   </div>
                   <div>
-                    <button
+                    <Button
                       onClick={closeActionModal}
-                      className="px-3 py-1 bg-white/5 rounded"
+                      variant="ghost"
+                      className="px-3 py-1"
                     >
                       Close
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -387,18 +389,12 @@ export default function ApplicationsAdmin() {
                     </div>
                   )}
                   <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={confirmActionModal}
-                      className="btn-primary"
-                    >
+                    <Button onClick={confirmActionModal} variant="primary">
                       Confirm
-                    </button>
-                    <button
-                      onClick={closeActionModal}
-                      className="btn-primary bg-white/5"
-                    >
+                    </Button>
+                    <Button onClick={closeActionModal} variant="ghost">
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

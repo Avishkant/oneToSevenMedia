@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import Button from "../components/Button";
 import { ADMIN_PERMISSIONS } from "../constants/adminPermissions";
 
 export default function AdminDetail() {
@@ -105,9 +106,9 @@ export default function AdminDetail() {
       <div className="max-w-4xl mx-auto px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Admin: {admin.name}</h1>
-          <Link to="/admin/admins" className="text-indigo-300 hover:underline">
+          <Button as={Link} to="/admin/admins" variant="ghost">
             Back
-          </Link>
+          </Button>
         </div>
 
         <div className="glass p-6 rounded">
@@ -179,21 +180,17 @@ export default function AdminDetail() {
           </div>
 
           <div className="mt-4 flex gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="btn-primary"
-            >
+            <Button onClick={handleSave} disabled={saving} variant="primary">
               {saving ? "Saving..." : "Save"}
-            </button>
+            </Button>
             {admin.role !== "admin" && (
-              <button
+              <Button
                 onClick={handleRestore}
                 disabled={saving}
-                className="btn-primary bg-emerald-600"
+                variant="success"
               >
                 Restore to admin
-              </button>
+              </Button>
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import Button from "./Button";
 
 export default function CampaignCard({
   id,
@@ -77,13 +78,14 @@ export default function CampaignCard({
           rows={3}
         />
         <div className="flex gap-2 justify-end">
-          <button
+          <Button
             onClick={() => setShowApplyModal(false)}
-            className="btn-primary bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            variant="ghost"
+            className="bg-slate-600"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             disabled={
               applying || followersCount === "" || isNaN(Number(followersCount))
             }
@@ -119,10 +121,10 @@ export default function CampaignCard({
                 setApplying(false);
               }
             }}
-            className="btn-primary bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            className=""
           >
             {applying ? "Applying..." : "Submit"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -203,17 +205,18 @@ export default function CampaignCard({
               {actions}
               {!actions && auth?.user?.role === "influencer" && (
                 <>
-                  <button
+                  <Button
                     disabled={applying || isApplied}
                     onClick={() => {
                       if (!auth?.token) return navigate("/influencer/login");
                       setShowApplyModal(true);
                     }}
-                    className="btn-primary w-full md:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    variant={isApplied ? "ghost" : "primary"}
+                    className="w-full md:w-auto"
                     aria-pressed={isApplied}
                   >
                     {isApplied ? "Applied" : applying ? "Applying..." : "Apply"}
-                  </button>
+                  </Button>
 
                   {/* modal rendered as sibling above */}
                 </>

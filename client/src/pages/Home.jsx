@@ -3,6 +3,7 @@ import FeatureCard from "../components/FeatureCard";
 import CampaignCard from "../components/CampaignCard";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import Button from "../components/Button";
 
 export default function Home() {
   const auth = useAuth();
@@ -122,20 +123,20 @@ export default function Home() {
             Page {page} of {totalPages}
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="btn-primary"
+              variant="primary"
             >
               Prev
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="btn-primary"
+              variant="primary"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import Button from "../components/Button";
 
 export default function CreateCampaign() {
   const [title, setTitle] = useState("");
@@ -154,9 +155,9 @@ export default function CreateCampaign() {
             <span className="text-sm">Public</span>
           </label>
           <div>
-            <button disabled={saving} className="btn-primary">
+            <Button type="submit" disabled={saving} variant="primary">
               {saving ? "Creating..." : "Create campaign"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

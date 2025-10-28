@@ -59,12 +59,9 @@ export default function CampaignsList() {
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Campaigns</h1>
-          <Link
-            to="/admin/dashboard"
-            className="text-indigo-300 hover:underline"
-          >
+          <Button as={Link} to="/admin/dashboard" variant="ghost">
             Back
-          </Link>
+          </Button>
         </div>
 
         <div className="glass p-4 rounded text-slate-200">
@@ -150,12 +147,15 @@ export default function CampaignsList() {
                     highlight={brandMatch}
                     actions={
                       <>
-                        <Link
+                        <Button
+                          as={Link}
                           to={`/admin/campaigns/${c._id}/edit`}
-                          className="text-indigo-300 hover:underline text-sm"
+                          variant="ghost"
+                          size="sm"
+                          className="text-indigo-300 text-sm"
                         >
                           Edit
-                        </Link>
+                        </Button>
                         <Button
                           variant="danger"
                           size="sm"

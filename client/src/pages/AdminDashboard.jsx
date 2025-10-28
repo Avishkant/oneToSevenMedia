@@ -15,15 +15,16 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-extrabold">Admin Dashboard</h1>
           <div className="text-sm">
-            <Link to="/" className="text-slate-300 hover:underline">
+            <Button as={Link} to="/" variant="ghost" className="text-slate-300">
               Back to site
-            </Link>
-            <button
+            </Button>
+            <Button
               onClick={handleLogout}
-              className="ml-4 text-slate-300 hover:underline"
+              variant="ghost"
+              className="ml-4 text-slate-300"
             >
               Sign out
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -69,22 +70,28 @@ export default function AdminDashboard() {
             </p>
             <div className="mt-4 flex flex-col gap-2">
               {auth?.user?.role === "superadmin" && (
-                <Link
+                <Button
+                  as={Link}
                   to="/admin/admins"
-                  className="text-indigo-300 hover:underline"
+                  variant="ghost"
+                  size="sm"
+                  className="text-indigo-300"
                 >
                   Admins
-                </Link>
+                </Button>
               )}
               {auth?.user?.role === "superadmin" ||
               (Array.isArray(auth?.user?.permissions) &&
                 auth.user.permissions.includes("influencers:view")) ? (
-                <Link
+                <Button
+                  as={Link}
                   to="/admin/influencers"
-                  className="text-indigo-300 hover:underline"
+                  variant="ghost"
+                  size="sm"
+                  className="text-indigo-300"
                 >
                   Influencers
-                </Link>
+                </Button>
               ) : (
                 <div className="text-slate-500">Influencers</div>
               )}

@@ -90,12 +90,9 @@ export default function AdminsList() {
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Admins</h1>
-          <Link
-            to="/admin/dashboard"
-            className="text-indigo-300 hover:underline"
-          >
+          <Button as={Link} to="/admin/dashboard" variant="ghost">
             Back
-          </Link>
+          </Button>
         </div>
 
         <div className="glass p-4 rounded">
@@ -138,18 +135,22 @@ export default function AdminsList() {
                     <div className="text-sm text-slate-400">{a.email}</div>
                   </div>
                   <div className="text-sm flex items-center gap-3">
-                    <Link
+                    <Button
+                      as={Link}
                       to={`/admin/admins/${a._id}`}
-                      className="text-indigo-300 hover:underline"
+                      variant="ghost"
+                      size="sm"
+                      className="text-indigo-300"
                     >
                       View
-                    </Link>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => handleDelete(a._id)}
-                      className="text-rose-400 hover:underline"
+                      variant="danger"
+                      size="sm"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ))}

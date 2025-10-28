@@ -140,12 +140,9 @@ export default function InfluencersList() {
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Influencers</h1>
-          <Link
-            to="/admin/dashboard"
-            className="text-indigo-300 hover:underline"
-          >
+          <Button as={Link} to="/admin/dashboard" variant="ghost">
             Back
-          </Link>
+          </Button>
         </div>
 
         <div className="glass p-4 rounded text-slate-200">
@@ -158,24 +155,20 @@ export default function InfluencersList() {
             <div>
               <div className="mb-3 flex flex-col sm:flex-row gap-2 items-center">
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
+                  <Button
                     onClick={() => setViewMode("influencers")}
-                    className={`px-3 py-1 rounded ${
-                      viewMode === "influencers"
-                        ? "bg-indigo-600"
-                        : "bg-white/5"
-                    }`}
+                    variant={viewMode === "influencers" ? "primary" : "ghost"}
+                    size="sm"
                   >
                     Influencers
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setViewMode("admins")}
-                    className={`px-3 py-1 rounded ${
-                      viewMode === "admins" ? "bg-indigo-600" : "bg-white/5"
-                    }`}
+                    variant={viewMode === "admins" ? "primary" : "ghost"}
+                    size="sm"
                   >
                     Admins
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="ml-auto flex items-center gap-2 w-full sm:w-auto">
@@ -278,14 +271,17 @@ export default function InfluencersList() {
                           {(it.categories || []).join(", ")}
                         </td>
                         <td className="py-3 text-sm">
-                          <a
+                          <Button
+                            as="a"
                             href={`/api/users/${it._id || it.id}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-indigo-300 hover:underline"
+                            variant="ghost"
+                            size="sm"
+                            className="text-indigo-300"
                           >
                             API
-                          </a>
+                          </Button>
                         </td>
                       </tr>
                     ))}

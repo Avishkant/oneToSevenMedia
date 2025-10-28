@@ -168,9 +168,9 @@ export default function ProfileNew() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Your profile</h1>
         {!isEditing && (
-          <button className="btn-primary" onClick={startEdit}>
+          <Button variant="primary" onClick={startEdit}>
             Edit profile
-          </button>
+          </Button>
         )}
       </div>
 

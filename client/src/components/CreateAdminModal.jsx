@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useToast from "../context/useToast";
+import Button from "./Button";
 import { ADMIN_PERMISSIONS } from "../constants/adminPermissions";
 
 export default function CreateAdminModal({ open, onClose, onCreated, auth }) {
@@ -115,16 +116,12 @@ export default function CreateAdminModal({ open, onClose, onCreated, auth }) {
             ))}
           </div>
           <div className="flex gap-2 mt-3">
-            <button type="submit" disabled={saving} className="btn-primary">
+            <Button type="submit" disabled={saving} variant="primary">
               {saving ? "Creating..." : "Create"}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-slate-300 hover:underline"
-            >
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

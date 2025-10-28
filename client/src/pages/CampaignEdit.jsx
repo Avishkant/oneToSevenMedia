@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import Button from "../components/Button";
 
 export default function CampaignEdit() {
   const { id } = useParams();
@@ -181,9 +182,9 @@ export default function CampaignEdit() {
             <span className="text-sm">Public</span>
           </label>
           <div>
-            <button disabled={saving} className="btn-primary">
+            <Button type="submit" disabled={saving} variant="primary">
               {saving ? "Saving..." : "Save changes"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

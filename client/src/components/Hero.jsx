@@ -1,4 +1,5 @@
 import { motion as Motion } from "framer-motion";
+import Button from "./Button";
 
 export default function Hero() {
   return (
@@ -21,11 +22,11 @@ export default function Hero() {
         </p>
 
         <div className="mt-8 flex items-center gap-4">
-          <a href="#" className="btn-gradient">
+          <Button as="a" href="#" variant="gradient">
             Get started
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
+              className="h-4 w-4 ml-2"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -37,7 +38,7 @@ export default function Hero() {
                 d="M17 8l4 4m0 0l-4 4m4-4H3"
               />
             </svg>
-          </a>
+          </Button>
           <a href="#" className="text-sm text-slate-300 hover:underline">
             Explore campaigns
           </a>

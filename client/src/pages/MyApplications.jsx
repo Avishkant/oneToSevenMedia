@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import Button from "../components/Button";
 import OrderModal from "../components/OrderModal";
 import ApplicationCard from "../components/ApplicationCard";
 
@@ -124,16 +125,17 @@ export default function MyApplications() {
           </select>
 
           <div className="ml-auto flex gap-2">
-            <button
+            <Button
               onClick={() => {
                 setSearch("");
                 setCategoryFilter("");
                 setStatusFilter("all");
               }}
-              className="btn-primary bg-slate-600"
+              variant="primary"
+              className="bg-slate-600"
             >
               Reset
-            </button>
+            </Button>
           </div>
         </div>
 
