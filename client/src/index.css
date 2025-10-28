@@ -36,6 +36,16 @@ body {
   @apply inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white font-medium transition-shadow shadow-sm;
 }
 
+.btn-gradient {
+  @apply inline-flex items-center gap-2 px-5 py-3 rounded-lg text-white font-semibold shadow-lg;
+  background: linear-gradient(90deg, #7c3aed, #ec4899);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(124, 58, 237, 0.18);
+}
+
 .tag {
   @apply inline-block text-xs bg-white/6 text-white/90 px-2 py-1 rounded-full;
 }

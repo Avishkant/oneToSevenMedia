@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
+import ApplicationCard from "../components/ApplicationCard";
 
 export default function ApplicationsAdmin() {
   const [brandName, setBrandName] = useState("");
@@ -10,7 +11,6 @@ export default function ApplicationsAdmin() {
   const toast = useToast();
 
   const loadFor = async () => {
-    // Fetch all applications and optionally filter by brand name on the client.
     setLoading(true);
     try {
       const token = auth?.token || localStorage.getItem("accessToken");
@@ -34,14 +34,14 @@ export default function ApplicationsAdmin() {
     }
   };
 
-  const act = async (id, verb) => {
-    // optimistic UI: set status locally first, revert on error
+  const act = async (id, verb, extra = {}) => {
     const oldApps = [...apps];
     const idx = apps.findIndex((x) => x._id === id);
     if (idx !== -1) {
       const updated = {
         ...apps[idx],
         status: verb === "approve" ? "approved" : "rejected",
+        ...extra,
       };
       const next = [...apps];
       next[idx] = updated;
@@ -49,52 +49,35 @@ export default function ApplicationsAdmin() {
     }
     try {
       const token = auth?.token || localStorage.getItem("accessToken");
-      // send optional comment if present for this app
-      const comment =
-        (actionState &&
-          actionState.app &&
-          actionState.app._id === id &&
-          actionState.comment) ||
-        undefined;
       const res = await fetch(`/api/applications/${id}/${verb}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: comment
-          ? JSON.stringify({
-              comment,
-              reason: verb === "reject" ? actionState.reason : undefined,
-            })
-          : undefined,
+        body: JSON.stringify(extra.comment ? extra : {}),
       });
       if (!res.ok) throw new Error("Action failed");
       await res.json();
       toast?.add(`${verb}ed`, { type: "success" });
-      // refresh list to ensure server state & fresh data
       await loadFor();
     } catch (err) {
-      // revert optimistic change
       setApps(oldApps);
       toast?.add(err.message || "Action failed", { type: "error" });
     }
   };
 
-  // action modal state: open when admin wants to approve/reject with optional comment
   const [actionState, setActionState] = useState(null);
   const openActionModal = (app, verb) =>
     setActionState({ open: true, app, verb, comment: "", reason: "" });
   const closeActionModal = () => setActionState(null);
   const confirmActionModal = async () => {
     if (!actionState) return;
-    const { app, verb } = actionState;
-    // call act which reads comment from actionState
-    await act(app._id, verb);
+    const { app, verb, comment, reason } = actionState;
+    await act(app._id, verb, { comment, reason });
     closeActionModal();
   };
 
-  // UI helpers: expansion and modal
   const [expanded, setExpanded] = useState({});
   const [selectedApp, setSelectedApp] = useState(null);
   const toggleExpand = (campId) =>
@@ -102,7 +85,6 @@ export default function ApplicationsAdmin() {
   const openDetails = (app) => setSelectedApp(app);
   const closeDetails = () => setSelectedApp(null);
 
-  // close details modal on Escape key
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") closeDetails();
@@ -111,15 +93,39 @@ export default function ApplicationsAdmin() {
     return () => document.removeEventListener("keydown", onKey);
   }, [selectedApp]);
 
-  // auto-load all applications for admin/superadmin on mount
+  // auto-load applications once the admin user role is known
   useEffect(() => {
-    if (auth?.user && ["admin", "superadmin"].includes(auth.user.role)) {
-      loadFor();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.user?.role]);
+    if (!(auth?.user && ["admin", "superadmin"].includes(auth.user.role)))
+      return;
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const token = auth?.token || localStorage.getItem("accessToken");
+        const res = await fetch(`/api/applications`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) throw new Error("Failed to load applications");
+        const body = await res.json();
+        let items = body || [];
+        if (brandName && brandName.trim() !== "") {
+          const q = brandName.trim().toLowerCase();
+          items = items.filter((a) =>
+            (a.campaign?.brandName || "").toLowerCase().includes(q)
+          );
+        }
+        if (mounted) setApps(items);
+      } catch (err) {
+        toast?.add(err.message || "Failed to load", { type: "error" });
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [auth?.user, auth?.user?.role, brandName, auth?.token, toast]);
 
-  // group applications by campaign for card display
   const byCampaign = apps.reduce((acc, a) => {
     const id = a.campaign?._id || "unknown";
     acc[id] = acc[id] || { campaign: a.campaign, apps: [] };
@@ -162,10 +168,7 @@ export default function ApplicationsAdmin() {
           </div>
         </div>
 
-        {/* single brand search above; duplicate influencer-id inputs removed */}
-
         <div className="mt-6">
-          {/* campaign grouped cards */}
           {Object.keys(byCampaign).length === 0 ? (
             <div className="text-slate-500 p-4">No applications found.</div>
           ) : (
@@ -203,56 +206,14 @@ export default function ApplicationsAdmin() {
                   {isExpanded && (
                     <div className="mt-3 divide-y divide-white/6">
                       {g.apps.map((a) => (
-                        <div
-                          key={a._id}
-                          className="py-3 flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm text-white">
-                              {(a.influencer?.name || "?")
-                                .split(" ")
-                                .map((s) => s[0])
-                                .slice(0, 2)
-                                .join("")}
-                            </div>
-                            <div>
-                              <a
-                                className="font-medium hover:underline"
-                                href={`/admin/influencers/${
-                                  a.influencer?._id || a.influencer
-                                }`}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {a.influencer?.name || a.influencer}
-                              </a>
-                              <div className="text-sm text-slate-400">
-                                {a.influencer?.email ? a.influencer.email : ""}{" "}
-                                • Status: {a.status} • Followers:{" "}
-                                {a.followersAtApply ?? "-"}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openActionModal(a, "approve")}
-                              className="btn-primary bg-emerald-500"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => openActionModal(a, "reject")}
-                              className="btn-primary bg-rose-500"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              onClick={() => openDetails(a)}
-                              className="btn-primary bg-slate-600"
-                            >
-                              Details
-                            </button>
-                          </div>
+                        <div key={a._id} className="py-3">
+                          <ApplicationCard
+                            application={a}
+                            showAdminActions
+                            onApprove={() => openActionModal(a, "approve")}
+                            onReject={() => openActionModal(a, "reject")}
+                            onViewDetails={() => openDetails(a)}
+                          />
                         </div>
                       ))}
                     </div>
@@ -261,6 +222,7 @@ export default function ApplicationsAdmin() {
               );
             })
           )}
+
           {selectedApp && (
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               <div
@@ -371,6 +333,7 @@ export default function ApplicationsAdmin() {
               </div>
             </div>
           )}
+
           {actionState && actionState.open && (
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               <div

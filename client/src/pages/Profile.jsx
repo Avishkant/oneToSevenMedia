@@ -303,10 +303,10 @@ export default function Profile() {
     </div>
   );
 }
-import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import useToast from "../context/useToast";
-import { PLATFORM_OPTIONS, PLATFORM_META, isValidUrl } from "../constants/socialPlatforms";
+// import { useEffect, useState } from "react";
+// import { useAuth } from "../context/AuthContext";
+// import useToast from "../context/useToast";
+// import { PLATFORM_OPTIONS, PLATFORM_META, isValidUrl } from "../constants/socialPlatforms";
 
 const CATEGORY_OPTIONS = [
   "Fashion",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
 import OrderModal from "../components/OrderModal";
+import ApplicationCard from "../components/ApplicationCard";
 
 export default function MyApplications() {
   const auth = useAuth();
@@ -85,24 +86,6 @@ export default function MyApplications() {
     });
   }, [items, search, categoryFilter, statusFilter]);
 
-  function StatusBadge({ status }) {
-    const map = {
-      applied: { text: "Applied", cls: "bg-white/5 text-slate-100" },
-      reviewing: { text: "Reviewing", cls: "bg-amber-600 text-white" },
-      approved: { text: "Approved", cls: "bg-emerald-600 text-white" },
-      rejected: { text: "Rejected", cls: "bg-rose-600 text-white" },
-    };
-    const item = map[status] || {
-      text: status || "Unknown",
-      cls: "bg-white/5 text-slate-100",
-    };
-    return (
-      <span className={`px-2 py-1 rounded text-xs font-medium ${item.cls}`}>
-        {item.text}
-      </span>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
@@ -169,96 +152,15 @@ export default function MyApplications() {
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((a) => (
-              <article key={a._id} className="bg-white/3 rounded p-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-semibold text-slate-100">
-                          {a.campaign?.brandName ||
-                            a.campaign ||
-                            "(unknown campaign)"}
-                        </div>
-                        <div className="text-sm text-slate-400">
-                          {a.campaign?.title || ""}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-slate-400">Applied</div>
-                        <div className="text-sm text-slate-200">
-                          {new Date(a.createdAt).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2">
-                      <StatusBadge status={a.status} />
-                      <div className="text-sm text-slate-300">
-                        Followers at apply:{" "}
-                        <span className="font-medium">
-                          {a.followersAtApply ?? "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {a.applicantComment && (
-                      <div className="mt-3 text-sm text-slate-300">
-                        <div className="font-semibold">Your note</div>
-                        <div className="text-slate-400">
-                          {a.applicantComment}
-                        </div>
-                      </div>
-                    )}
-
-                    {a.adminComment && (
-                      <div className="mt-3 text-sm">
-                        <div className="font-semibold text-slate-100">
-                          Note from admin
-                        </div>
-                        <div className="text-slate-300">{a.adminComment}</div>
-                      </div>
-                    )}
-
-                    {a.rejectionReason && (
-                      <div className="mt-3 text-sm text-rose-400">
-                        Rejection: {a.rejectionReason}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {(a.sampleMedia || []).length > 0 && (
-                  <div className="mt-3 flex gap-2 overflow-x-auto">
-                    {a.sampleMedia.map((m, i) => (
-                      <img
-                        key={i}
-                        src={m}
-                        alt={`sample-${i}`}
-                        className="w-20 h-20 object-cover rounded"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-sm text-slate-400">
-                    Status: <span className="font-medium">{a.status}</span>
-                  </div>
-                  {a.status === "approved" && (
-                    <div>
-                      <button
-                        onClick={() => {
-                          setSelectedApp(a);
-                          setOrderModalOpen(true);
-                        }}
-                        className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
-                      >
-                        Submit Order
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </article>
+              <ApplicationCard
+                key={a._id}
+                application={a}
+                onViewDetails={() => setSelectedApp(a)}
+                onSubmitOrder={(app) => {
+                  setSelectedApp(app);
+                  setOrderModalOpen(true);
+                }}
+              />
             ))}
           </div>
         )}

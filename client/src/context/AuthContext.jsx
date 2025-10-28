@@ -48,27 +48,37 @@ export function AuthProvider({ children }) {
   }, [token, API_BASE]);
 
   // When a token is present for an admin, fetch the authoritative profile
-  // (which includes permissions) so the UI has accurate permission info.
+  // When a token is present, fetch the authoritative profile for the
+  // logged-in user so the UI has accurate fields (admins get permissions,
+  // influencers get full profile fields like name/email). We fetch the
+  // appropriate endpoint depending on the user's role.
   useEffect(() => {
     let mounted = true;
     async function loadProfile() {
       if (!token) return;
       const jwtUser = parseJwt(token);
       if (!jwtUser) return;
-      // only fetch for admin or superadmin to get permissions
-      if (jwtUser.role === "admin" || jwtUser.role === "superadmin") {
-        try {
+
+      try {
+        if (jwtUser.role === "admin" || jwtUser.role === "superadmin") {
           const res = await fetch(`${API_BASE}/api/admins/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) return;
           const body = await res.json();
           if (!mounted) return;
-          // merge token-derived fields (id, role) with fresh profile including permissions
           setUser({ ...jwtUser, ...(body || {}) });
-        } catch {
-          // ignore; keep token-derived user
+        } else if (jwtUser.role === "influencer") {
+          const res = await fetch(`${API_BASE}/api/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) return;
+          const body = await res.json();
+          if (!mounted) return;
+          setUser({ ...jwtUser, ...(body || {}) });
         }
+      } catch {
+        // ignore and keep token-derived user
       }
     }
     loadProfile();
@@ -96,15 +106,29 @@ export function AuthProvider({ children }) {
         if (body.refreshToken) setRefreshToken(body.refreshToken);
       }
       const parsed = body.token ? parseJwt(body.token) : null;
-      // fetch full admin profile (permissions) when logging in as admin
-      if (parsed && (parsed.role === "admin" || parsed.role === "superadmin")) {
+      // fetch full profile for admins and influencers after login
+      if (parsed) {
         try {
-          const res2 = await fetch(`${API_BASE}/api/admins/me`, {
-            headers: { Authorization: `Bearer ${body.token}` },
-          });
-          if (res2.ok) {
-            const full = await res2.json();
-            setUser({ ...parsed, ...(full || {}) });
+          if (parsed.role === "admin" || parsed.role === "superadmin") {
+            const res2 = await fetch(`${API_BASE}/api/admins/me`, {
+              headers: { Authorization: `Bearer ${body.token}` },
+            });
+            if (res2.ok) {
+              const full = await res2.json();
+              setUser({ ...parsed, ...(full || {}) });
+            } else {
+              setUser(parsed);
+            }
+          } else if (parsed.role === "influencer") {
+            const res2 = await fetch(`${API_BASE}/api/users/me`, {
+              headers: { Authorization: `Bearer ${body.token}` },
+            });
+            if (res2.ok) {
+              const full = await res2.json();
+              setUser({ ...parsed, ...(full || {}) });
+            } else {
+              setUser(parsed);
+            }
           } else {
             setUser(parsed);
           }
