@@ -83,7 +83,7 @@ export default function Header() {
             </>
           ) : user && (role === "admin" || role === "superadmin") ? (
             <>
-              <Link to="/campaigns" className="hover:text-white">
+              <Link to="/admin/campaigns" className="hover:text-white">
                 Campaigns
               </Link>
               <Link to="/admin/dashboard" className="hover:text-white">
@@ -100,9 +100,6 @@ export default function Header() {
               </a>
               <a href="/campaigns/browse" className="hover:text-white">
                 Browse
-              </a>
-              <a href="#pricing" className="hover:text-white">
-                Pricing
               </a>
             </>
           )}
@@ -200,7 +197,7 @@ export default function Header() {
               </>
             ) : user && (role === "admin" || role === "superadmin") ? (
               <>
-                <Link to="/campaigns" className="block">
+                <Link to="/admin/campaigns" className="block">
                   Campaigns
                 </Link>
                 <Link to="/admin/dashboard" className="block">
@@ -214,9 +211,6 @@ export default function Header() {
                 </a>
                 <a href="#campaigns" className="block">
                   Campaigns
-                </a>
-                <a href="#pricing" className="block">
-                  Pricing
                 </a>
               </>
             )}

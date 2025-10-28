@@ -20,6 +20,7 @@ import InfluencerDashboard from "./pages/InfluencerDashboard";
 import BrowseCampaigns from "./pages/BrowseCampaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import Profile from "./pages/ProfileNew";
+import ProfileAdmin from "./pages/ProfileAdmin";
 // import Wallet from "./pages/Wallet";
 import PrivateRoute from "./components/PrivateRoute";
 import "./index.css";
@@ -153,6 +154,14 @@ function App() {
             element={
               <PrivateRoute roles={["influencer"]}>
                 <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute roles={["admin", "superadmin"]}>
+                <ProfileAdmin />
               </PrivateRoute>
             }
           />

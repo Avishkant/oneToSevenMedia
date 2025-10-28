@@ -4,6 +4,19 @@ const createApp = require("./app");
 
 dotenv.config();
 
+// Global error handlers to log unexpected errors so platform logs capture them.
+process.on("unhandledRejection", (reason, promise) => {
+  // eslint-disable-next-line no-console
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  // eslint-disable-next-line no-console
+  console.error("Uncaught Exception:", err);
+  // It's often safer to crash and let the host restart the process so the system is in a clean state.
+  process.exit(1);
+});
+
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
 const app = createApp();

@@ -17,6 +17,13 @@ router.get(
   requireRole("admin", "superadmin"),
   adminController.listInfluencers
 );
+// return the authenticated admin's profile (admin or superadmin)
+router.get(
+  "/me",
+  auth,
+  requireRole("admin", "superadmin"),
+  adminController.getMe
+);
 router.get("/:id", auth, requireRole("superadmin"), adminController.getAdmin);
 router.patch(
   "/:id",

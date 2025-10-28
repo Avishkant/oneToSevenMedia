@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/auth");
 const campaignRoutes = require("./routes/campaigns");
@@ -31,9 +32,21 @@ function createApp() {
   }
   app.use(express.json());
 
-  // health
+  // health - return 200 only when app is running and (optionally) DB is connected
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", env: process.env.NODE_ENV || "development" });
+    const env = process.env.NODE_ENV || "development";
+    // If MONGO_URI is configured, ensure we report DB connectivity.
+    if (process.env.MONGO_URI) {
+      const state = mongoose.connection.readyState; // 0 disconnected, 1 connected, 2 connecting, 3 disconnecting
+      if (state === 1) {
+        return res.json({ status: "ok", env });
+      }
+      // DB is not connected — surface 503 so load balancers/monitoring see it's unhealthy
+      return res.status(503).json({ status: "unavailable", env, db: false });
+    }
+
+    // No DB expected in this environment — return ok
+    return res.json({ status: "ok", env });
   });
 
   // mount auth routes

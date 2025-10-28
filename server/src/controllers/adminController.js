@@ -117,6 +117,20 @@ async function getAdmin(req, res) {
   }
 }
 
+async function getMe(req, res) {
+  try {
+    if (!req.user) return res.status(401).json({ error: "unauthorized" });
+    // req.user comes from auth middleware and has id; fetch fresh record without password
+    const me = await User.findById(req.user.id).select("-password");
+    if (!me) return res.status(404).json({ error: "not_found" });
+    res.json(me);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
 async function updateAdmin(req, res) {
   try {
     const admin = await User.findById(req.params.id);
@@ -166,6 +180,7 @@ module.exports = {
   listAdmins,
   listInfluencers,
   getAdmin,
+  getMe,
   updateAdmin,
   deleteAdmin,
 };
