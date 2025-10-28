@@ -100,7 +100,10 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
     } catch {
       // ignore
     }
