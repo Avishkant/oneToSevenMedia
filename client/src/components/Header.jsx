@@ -71,18 +71,42 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm text-white/90">
-          <a href="#features" className="hover:text-white">
-            Features
-          </a>
-          <a href="#campaigns" className="hover:text-white">
-            Campaigns
-          </a>
-          <a href="/campaigns/browse" className="hover:text-white">
-            Browse
-          </a>
-          <a href="#pricing" className="hover:text-white">
-            Pricing
-          </a>
+          {/* Show different nav items for logged-in influencers */}
+          {user && role === "influencer" ? (
+            <>
+              <Link to="/campaigns/browse" className="hover:text-white">
+                Campaigns
+              </Link>
+              <Link to="/influencer/applications" className="hover:text-white">
+                My applications
+              </Link>
+            </>
+          ) : user && (role === "admin" || role === "superadmin") ? (
+            <>
+              <Link to="/campaigns" className="hover:text-white">
+                Campaigns
+              </Link>
+              <Link to="/admin/dashboard" className="hover:text-white">
+                Dashboard
+              </Link>
+            </>
+          ) : (
+            <>
+              <a href="#features" className="hover:text-white">
+                Features
+              </a>
+              <a href="#campaigns" className="hover:text-white">
+                Campaigns
+              </a>
+              <a href="/campaigns/browse" className="hover:text-white">
+                Browse
+              </a>
+              <a href="#pricing" className="hover:text-white">
+                Pricing
+              </a>
+            </>
+          )}
+
           {!user ? (
             <Link to="/influencer/login" className="btn-primary">
               Influencer login
@@ -104,60 +128,46 @@ export default function Header() {
               {menuOpen && (
                 <div
                   ref={menuRef}
-                  className="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/6 rounded-md shadow-lg z-50 py-2"
+                  className="absolute right-0 mt-2 w-56 bg-slate-800 border border-white/6 rounded-md shadow-lg z-50 py-2"
                 >
-                  {role === "influencer" && (
+                  {/* Profile summary */}
+                  <div className="px-4 py-3 border-b border-white/6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-semibold">
+                        {initials}
+                      </div>
+                      <div>
+                        <div className="font-medium">
+                          {user.name || user.email}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {user.email}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-2">
                     <Link
-                      to="/influencer/dashboard"
+                      to={
+                        role === "influencer"
+                          ? "/influencer/profile"
+                          : "/profile"
+                      }
                       className="block px-4 py-2 hover:bg-white/5"
                     >
-                      Dashboard
+                      My profile
                     </Link>
-                  )}
-                  <Link
-                    to="/campaigns/browse"
-                    className="block px-4 py-2 hover:bg-white/5"
-                  >
-                    Browse campaigns
-                  </Link>
-                  {role === "influencer" && (
-                    <Link
-                      to="/influencer/applications"
-                      className="block px-4 py-2 hover:bg-white/5"
+                  </div>
+
+                  <div className="border-t border-white/6 mt-2">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 hover:bg-white/5"
                     >
-                      My applications
-                    </Link>
-                  )}
-                  {role === "influencer" && (
-                    <Link
-                      to="/influencer/profile"
-                      className="block px-4 py-2 hover:bg-white/5"
-                    >
-                      Profile
-                    </Link>
-                  )}
-                  {role === "influencer" && (
-                    <Link
-                      to="/influencer/wallet"
-                      className="block px-4 py-2 hover:bg-white/5"
-                    >
-                      Wallet
-                    </Link>
-                  )}
-                  {(role === "admin" || role === "superadmin") && (
-                    <Link
-                      to="/admin/dashboard"
-                      className="block px-4 py-2 hover:bg-white/5"
-                    >
-                      Admin
-                    </Link>
-                  )}
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 hover:bg-white/5"
-                  >
-                    Sign out
-                  </button>
+                      Sign out
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -176,15 +186,40 @@ export default function Header() {
       {open && (
         <div className="md:hidden mt-4 px-6">
           <div className="flex flex-col gap-3 glass p-4 rounded-md">
-            <a href="#features" className="block">
-              Features
-            </a>
-            <a href="#campaigns" className="block">
-              Campaigns
-            </a>
-            <a href="#pricing" className="block">
-              Pricing
-            </a>
+            {user && role === "influencer" ? (
+              <>
+                <Link to="/campaigns/browse" className="block">
+                  Campaigns
+                </Link>
+                <Link to="/influencer/applications" className="block">
+                  My applications
+                </Link>
+                <Link to="/influencer/profile" className="block">
+                  Profile
+                </Link>
+              </>
+            ) : user && (role === "admin" || role === "superadmin") ? (
+              <>
+                <Link to="/campaigns" className="block">
+                  Campaigns
+                </Link>
+                <Link to="/admin/dashboard" className="block">
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <a href="#features" className="block">
+                  Features
+                </a>
+                <a href="#campaigns" className="block">
+                  Campaigns
+                </a>
+                <a href="#pricing" className="block">
+                  Pricing
+                </a>
+              </>
+            )}
 
             {!user && (
               <Link
@@ -198,16 +233,6 @@ export default function Header() {
 
             {user && (
               <div>
-                {role === "influencer" && (
-                  <Link to="/influencer/dashboard" className="block">
-                    Dashboard
-                  </Link>
-                )}
-                {role === "influencer" && (
-                  <Link to="/influencer/applications" className="block">
-                    My applications
-                  </Link>
-                )}
                 {(role === "admin" || role === "superadmin") && (
                   <Link to="/admin/dashboard" className="block">
                     Admin
