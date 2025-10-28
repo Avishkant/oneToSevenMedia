@@ -86,7 +86,8 @@ async function register(req, res) {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      // For deployed frontend + backend on different origins we need SameSite=None and secure cookies.
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000,
     });
     res.status(201).json({ id: user._id, token: accessToken, refreshToken });
@@ -111,7 +112,7 @@ async function login(req, res) {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000,
     });
     res.json({ id: user._id, token: accessToken, refreshToken });
@@ -142,7 +143,7 @@ async function refresh(req, res) {
     res.cookie("refreshToken", newRefresh, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000,
     });
     res.json({ token: accessToken, refreshToken: newRefresh });

@@ -48,12 +48,17 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem("refreshToken");
   }, [refreshToken]);
 
+  // API base: use VITE_BACKEND_URL in prod (deployed frontend + backend on different origins),
+  // otherwise default to relative /api for local dev proxy.
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || "";
+
   const login = async ({ email, password }) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
       const body = await res.json();
@@ -74,9 +79,10 @@ export function AuthProvider({ children }) {
   const register = async (payload) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       const body = await res.json();
@@ -94,7 +100,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
     } catch {
       // ignore
     }
@@ -107,9 +113,10 @@ export function AuthProvider({ children }) {
     const tokenToUse = refreshToken || localStorage.getItem("refreshToken");
     if (!tokenToUse) return { ok: false, error: "no_refresh_token" };
     try {
-      const res = await fetch("/api/auth/refresh", {
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ refreshToken: tokenToUse }),
       });
       const body = await res.json();
