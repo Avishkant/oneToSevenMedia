@@ -143,7 +143,8 @@ export default function CampaignCard({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22 }}
-        className={`glass rounded-xl overflow-hidden card-shadow border-2 ${
+        // Make card fill available grid cell and layout children vertically
+        className={`glass rounded-xl overflow-hidden card-shadow border-2 h-full flex flex-col ${
           highlight
             ? "border-yellow-400/60 shadow-yellow-500/20"
             : "border-transparent"
@@ -151,13 +152,14 @@ export default function CampaignCard({
       >
         {/* Banner / hero area */}
         <motion.div
-          className="relative w-full overflow-hidden"
+          className="relative w-full overflow-hidden flex-shrink-0"
           whileHover={{ scale: 1.03 }}
           transition={{ duration: 0.4 }}
         >
           <img
             src={imageUrl || DEFAULT_CAMPAIGN_BANNER}
             alt={title}
+            // fixed banner height so all cards have the same visual header size
             className="w-full h-44 md:h-48 object-cover transform transition-transform duration-500"
           />
 
@@ -167,8 +169,12 @@ export default function CampaignCard({
           {/* Title/brand overlay */}
           <div className="absolute left-4 bottom-3 right-4 flex items-end justify-between">
             <div>
-              <div className="text-sm text-slate-200/90 font-semibold">{brand}</div>
-              <div className="text-base md:text-lg font-bold text-white leading-tight">{title}</div>
+              <div className="text-sm text-slate-200/90 font-semibold">
+                {brand}
+              </div>
+              <div className="text-base md:text-lg font-bold text-white leading-tight">
+                {title}
+              </div>
             </div>
             <div className="hidden md:flex items-center gap-2">
               {budget && (
@@ -179,8 +185,8 @@ export default function CampaignCard({
             </div>
           </div>
         </motion.div>
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-4">
+        <div className="p-4 flex flex-col flex-grow">
+          <div className="flex items-start justify-between gap-4 flex-grow">
             <div>
               <h3 className="font-semibold">{brand}</h3>
               <p className="text-xs text-slate-300">

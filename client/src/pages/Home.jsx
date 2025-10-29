@@ -375,7 +375,7 @@ export default function Home() {
               No featured campaigns available.
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch">
             {newestCampaigns.map((c, index) => (
               <motion.div
                 key={c._id}
