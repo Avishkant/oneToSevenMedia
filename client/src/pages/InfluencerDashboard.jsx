@@ -110,7 +110,7 @@ function CampaignsListInner() {
           id={c._id}
           title={c.title}
           brand={c.brandName}
-          budget={`$${c.budget || 0}`}
+          budget={`Rs ${c.budget || 0}`}
           tags={c.category ? [c.category] : []}
           category={c.category}
           followersMin={c.followersMin}

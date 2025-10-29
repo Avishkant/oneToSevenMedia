@@ -5,6 +5,11 @@ import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
 import Button from "./Button";
 
+// Default horizontal banner to use when a campaign doesn't provide an image
+// Switched to a neutral abstract/business-style banner suitable for all campaigns
+const DEFAULT_CAMPAIGN_BANNER =
+  "https://images.unsplash.com/photo-1505682634904-d7c1de1d0f0f?w=1600&q=80&auto=format&fit=crop";
+
 export default function CampaignCard({
   id,
   title,
@@ -134,27 +139,46 @@ export default function CampaignCard({
     <>
       {applyModal}
       <motion.article
-        whileHover={{ scale: 1.02 }}
-        initial={{ opacity: 0, y: 6 }}
+        whileHover={{ scale: 1.025 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.18 }}
+        transition={{ duration: 0.22 }}
         className={`glass rounded-xl overflow-hidden card-shadow border-2 ${
           highlight
             ? "border-yellow-400/60 shadow-yellow-500/20"
             : "border-transparent"
         }`}
       >
-        {imageUrl ? (
+        {/* Banner / hero area */}
+        <motion.div
+          className="relative w-full overflow-hidden"
+          whileHover={{ scale: 1.03 }}
+          transition={{ duration: 0.4 }}
+        >
           <img
-            src={imageUrl}
+            src={imageUrl || DEFAULT_CAMPAIGN_BANNER}
             alt={title}
-            className="w-full h-40 object-cover"
+            className="w-full h-44 md:h-48 object-cover transform transition-transform duration-500"
           />
-        ) : (
-          <div className="w-full h-40 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center justify-center text-sm text-slate-300">
-            {brand}
+
+          {/* Gradient overlay to make text readable */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+          {/* Title/brand overlay */}
+          <div className="absolute left-4 bottom-3 right-4 flex items-end justify-between">
+            <div>
+              <div className="text-sm text-slate-200/90 font-semibold">{brand}</div>
+              <div className="text-base md:text-lg font-bold text-white leading-tight">{title}</div>
+            </div>
+            <div className="hidden md:flex items-center gap-2">
+              {budget && (
+                <div className="text-sm bg-white/10 text-white px-3 py-1 rounded-full backdrop-blur">
+                  {budget}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </motion.div>
         <div className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
