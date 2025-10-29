@@ -8,6 +8,7 @@ const campaignRoutes = require("./routes/campaigns");
 const applicationRoutes = require("./routes/applications");
 const adminRoutes = require("./routes/admins");
 const userRoutes = require("./routes/users");
+const uploadRoutes = require("./routes/uploads");
 
 function createApp() {
   const app = express();
@@ -63,6 +64,8 @@ function createApp() {
   app.use("/api/admins", adminRoutes);
   // mount user routes
   app.use("/api/users", userRoutes);
+  // uploads (server-side Cloudinary uploads)
+  app.use("/api/uploads", uploadRoutes);
 
   return app;
 }

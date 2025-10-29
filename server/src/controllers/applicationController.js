@@ -122,6 +122,11 @@ async function submitOrder(req, res) {
   if (!orderId || typeof amount === "undefined")
     return res.status(400).json({ error: "missing_fields" });
   try {
+    // debug: log incoming order submission (helps diagnose missing screenshot URL)
+    // eslint-disable-next-line no-console
+    console.log(
+      `submitOrder called: appId=${appId} userId=${userId} orderId=${orderId} amount=${amount} screenshotUrl=${screenshotUrl}`
+    );
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
     // only the influencer who owns the application can submit order
