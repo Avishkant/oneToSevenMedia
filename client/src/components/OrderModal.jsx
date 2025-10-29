@@ -56,14 +56,15 @@ export default function OrderModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    // Ensure this modal renders above other modals (details modal uses z-9999)
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/60"
         onClick={() => !submitting && onClose && onClose()}
       />
       <form
         onSubmit={handleSubmit}
-        className="relative bg-slate-800 text-slate-100 rounded p-6 w-full max-w-md z-10"
+        className="relative bg-slate-800 text-slate-100 rounded p-6 w-full max-w-md z-[10002]"
       >
         <h2 className="text-lg font-semibold mb-3">Submit Order</h2>
         <div className="text-sm text-slate-300 mb-4">
