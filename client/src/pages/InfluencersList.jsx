@@ -3,6 +3,27 @@ import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
+import { motion } from "framer-motion";
+import { FaUserTag, FaUsers, FaSearch, FaFilter, FaRedo, FaDownload, FaAngleLeft, FaAngleRight } from "react-icons/fa";
+
+// --- Custom Styled Input/Select Components ---
+const StyledInput = ({ className = "", ...props }) => (
+  <input
+    className={`px-4 py-2 rounded-lg bg-gray-700/70 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition duration-200 ${className}`}
+    {...props}
+  />
+);
+
+const StyledSelect = ({ className = "", children, ...props }) => (
+  <select
+    className={`px-4 py-2 rounded-lg bg-gray-700/70 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition duration-200 ${className} appearance-none cursor-pointer`}
+    {...props}
+  >
+    {children}
+  </select>
+);
+
+// --- Main Component ---
 
 export default function InfluencersList() {
   const [items, setItems] = useState([]);
@@ -16,45 +37,53 @@ export default function InfluencersList() {
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
+  // --- Data Loading Logic (Improved for clarity) ---
   useEffect(() => {
     let mounted = true;
     async function load() {
       setLoading(true);
       try {
         async function fetchWithRefresh(url, opts = {}) {
-          let res = await fetch(url, opts);
+          const token = auth?.token || localStorage.getItem("accessToken");
+          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+          
+          // Use current headers for the fetch request
+          let res = await fetch(url, { ...opts, headers: { ...opts.headers, ...headers } }); 
+
           if (res.status === 401 && auth && auth.refresh) {
             const refreshed = await auth.refresh();
             if (refreshed && refreshed.ok) {
-              const newToken =
-                auth?.token || localStorage.getItem("accessToken");
-              opts.headers = {
-                ...(opts.headers || {}),
-                ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
-              };
-              res = await fetch(url, opts);
+              const newToken = refreshed.body.token || refreshed.body?.token;
+              const newHeaders = newToken ? { Authorization: `Bearer ${newToken}` } : {};
+              
+              // Retry with new token
+              res = await fetch(url, { ...opts, headers: { ...opts.headers, ...newHeaders } });
             }
           }
           return res;
         }
 
-        const token = auth?.token || localStorage.getItem("accessToken");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         let url = "/api/admins/influencers";
         if (viewMode === "admins") url = "/api/admins";
+        
         const qs = new URLSearchParams();
         if (viewMode === "influencers") {
           if (minFollowers) qs.set("minFollowers", minFollowers);
           if (categoryFilter) qs.set("category", categoryFilter);
           if (filter) qs.set("q", filter);
         }
+        
         const full = qs.toString() ? `${url}?${qs.toString()}` : url;
-        const res = await fetchWithRefresh(full, { headers });
-        if (!res.ok) throw new Error("Unable to fetch");
+        const res = await fetchWithRefresh(full, { headers: {} }); // Headers added in fetchWithRefresh
+
+        if (!res.ok) throw new Error("Unable to fetch records");
         const body = await res.json();
-        if (mounted) setItems(body || []);
+        if (mounted) {
+          setItems(body || []);
+          setPage(1); // Reset page on new data load
+        }
       } catch (err) {
-        toast?.add(err.message || "Failed to load", { type: "error" });
+        toast?.add(err.message || "Failed to load records", { type: "error" });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -63,10 +92,15 @@ export default function InfluencersList() {
     return () => (mounted = false);
   }, [auth, toast, viewMode, categoryFilter, minFollowers, filter]);
 
+  // --- Filtering, Paging, and Export Logic (Unchanged) ---
   function getFiltered() {
     const q = (filter || "").trim().toLowerCase();
     return items.filter((it) => {
-      if (viewMode === "admins") return true; // admins list has its own filtering maybe by name/email
+      if (viewMode === "admins") {
+          // Simple filter for admins list
+          return (it.name || "").toLowerCase().includes(q) || (it.email || "").toLowerCase().includes(q);
+      }
+      // Influencer filtering logic
       if (q) {
         const hay = `${it.name || ""} ${it.email || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -105,7 +139,8 @@ export default function InfluencersList() {
     ];
     const csv = [cols.join(",")];
     for (const r of rows) {
-      const profile = `${window.location.origin}/api/users/${r._id || r.id}`;
+      // NOTE: This links to the public API endpoint, not the Admin Detail page URL
+      const profile = `${window.location.origin}/api/users/${r._id || r.id}`; 
       const line = [
         escapeCsv(r.name || ""),
         escapeCsv(r.email || ""),
@@ -127,6 +162,7 @@ export default function InfluencersList() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    toast?.add(`Exported ${rows.length} records to CSV!`, { type: "success" });
   }
 
   function escapeCsv(v) {
@@ -134,199 +170,218 @@ export default function InfluencersList() {
     const s = String(v).replace(/"/g, '""');
     return `"${s}"`;
   }
+  
+  const filteredItems = getFiltered();
+  const paginatedItems = getPaged(filteredItems);
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  
+  const allCategories = [
+    ...new Set(
+        items.map((it) => it.categories).flat().filter(Boolean)
+    ),
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Influencers</h1>
-          <Button as={Link} to="/admin/dashboard" variant="ghost">
-            Back
+        
+        {/* Header */}
+        <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between mb-8 border-b border-gray-700 pb-4"
+        >
+          <h1 className="text-3xl font-extrabold text-cyan-400">
+            {viewMode === "influencers" ? "Influencer Database" : "Admin User List"}
+          </h1>
+          <Button as={Link} to="/admin/dashboard" variant="secondary" className="hover:bg-gray-700/50">
+            Back to Dashboard
           </Button>
-        </div>
+        </motion.div>
 
-        <div className="glass p-4 rounded text-slate-200">
-          {loading && <div className="text-sm">Loading...</div>}
-          {!loading && items.length === 0 && (
-            <div className="text-sm text-slate-300">No records found.</div>
-          )}
+        {/* --- Controls and Filters --- */}
+        <motion.div 
+            className="bg-gray-800/90 p-5 rounded-xl border border-gray-700 shadow-lg mb-8"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+        >
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2 mb-4 border-b border-gray-700/50 pb-4">
+            <h3 className="text-lg font-semibold text-purple-400 mr-4">View Mode:</h3>
+            <Button
+              onClick={() => setViewMode("influencers")}
+              variant={viewMode === "influencers" ? "accent" : "ghost"}
+              className={viewMode === "influencers" ? "" : "text-gray-300 hover:bg-gray-700"}
+              size="sm"
+            >
+              <FaUserTag className="mr-2" /> Influencers
+            </Button>
+            <Button
+              onClick={() => setViewMode("admins")}
+              variant={viewMode === "admins" ? "accent" : "ghost"}
+              className={viewMode === "admins" ? "" : "text-gray-300 hover:bg-gray-700"}
+              size="sm"
+            >
+              <FaUsers className="mr-2" /> Admins
+            </Button>
+          </div>
 
-          {!loading && items.length > 0 && (
-            <div>
-              <div className="mb-3 flex flex-col sm:flex-row gap-2 items-center">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    onClick={() => setViewMode("influencers")}
-                    variant={viewMode === "influencers" ? "primary" : "ghost"}
-                    size="sm"
-                  >
-                    Influencers
-                  </Button>
-                  <Button
-                    onClick={() => setViewMode("admins")}
-                    variant={viewMode === "admins" ? "primary" : "ghost"}
-                    size="sm"
-                  >
-                    Admins
-                  </Button>
-                </div>
+          {/* Filtering Inputs */}
+          <div className={`grid gap-4 ${viewMode === 'influencers' ? 'md:grid-cols-5' : 'md:grid-cols-2'}`}>
+            
+            <StyledInput
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={`Search name or email in ${viewMode}`}
+              className={viewMode === 'influencers' ? 'md:col-span-1' : 'md:col-span-1'}
+            />
 
-                <div className="ml-auto flex items-center gap-2 w-full sm:w-auto">
-                  <input
-                    value={filter}
-                    onChange={(e) => {
-                      setFilter(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Search name or email"
-                    className="px-3 py-2 rounded bg-white/3 w-full sm:w-64 text-slate-900 placeholder:text-slate-500"
-                  />
-                  {viewMode === "influencers" && (
-                    <>
-                      <input
-                        value={minFollowers}
-                        onChange={(e) => setMinFollowers(e.target.value)}
-                        placeholder="Min followers"
-                        className="px-3 py-2 rounded bg-white/3 w-40 text-slate-900 placeholder:text-slate-500"
-                      />
-                      <select
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="px-3 py-2 rounded bg-white/3 text-slate-900"
-                      >
-                        <option value="">All categories</option>
-                        {[
-                          ...new Set(
-                            items
-                              .map((it) => it.categories)
-                              .flat()
-                              .filter(Boolean)
-                          ),
-                        ].map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </>
-                  )}
-                  <Button
-                    onClick={() => {
-                      setFilter("");
-                      setCategoryFilter("");
-                      setMinFollowers("");
-                    }}
-                    variant="primary"
-                    className="bg-slate-600"
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mb-3 flex items-center gap-2">
-                <Button
-                  onClick={() => exportCsv("influencers_all.csv", items)}
-                  variant="primary"
+            {viewMode === "influencers" && (
+              <>
+                <StyledInput
+                  type="number"
+                  value={minFollowers}
+                  onChange={(e) => setMinFollowers(e.target.value)}
+                  placeholder="Min followers"
+                  className="md:col-span-1"
+                />
+                
+                <StyledSelect
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="md:col-span-1"
                 >
-                  Export all
-                </Button>
-                <Button
-                  onClick={() =>
-                    exportCsv("influencers_filtered.csv", getFiltered())
-                  }
-                  variant="success"
-                >
-                  Export filtered
-                </Button>
-              </div>
+                  <option value="" disabled={categoryFilter !== ""}>All Categories</option>
+                  {allCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </StyledSelect>
+              </>
+            )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="text-sm text-slate-400 border-b border-white/6">
-                      <th className="py-2">Name</th>
-                      <th className="py-2">Email</th>
-                      <th className="py-2">Phone</th>
-                      <th className="py-2">Followers</th>
-                      <th className="py-2">Categories</th>
-                      <th className="py-2">Profile</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getPaged(getFiltered()).map((it) => (
-                      <tr
-                        key={it._id || it.id}
-                        className="border-b border-white/6"
-                      >
-                        <td className="py-3 font-semibold">{it.name}</td>
-                        <td className="py-3 text-sm text-slate-300">
-                          {it.email}
-                        </td>
-                        <td className="py-3 text-sm">{it.phone || "-"}</td>
-                        <td className="py-3 text-sm">
-                          {it.followersCount ?? 0}
-                        </td>
-                        <td className="py-3 text-sm">
-                          {(it.categories || []).join(", ")}
-                        </td>
-                        <td className="py-3 text-sm">
-                          <Button
-                            as="a"
-                            href={`/api/users/${it._id || it.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            variant="ghost"
-                            size="sm"
-                            className="text-indigo-300"
-                          >
-                            API
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <Button
+              onClick={() => {
+                setFilter("");
+                setCategoryFilter("");
+                setMinFollowers("");
+                setPage(1);
+              }}
+              variant="secondary"
+              className="md:col-span-1 flex items-center justify-center gap-2"
+            >
+              <FaRedo /> Reset Filters
+            </Button>
 
-              <div className="mt-4 flex items-center justify-between">
-                <div className="text-sm text-slate-300">
-                  Page {page} of{" "}
-                  {Math.max(1, Math.ceil(getFiltered().length / pageSize))}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    variant="primary"
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      setPage((p) =>
-                        Math.min(
-                          Math.max(
-                            1,
-                            Math.ceil(getFiltered().length / pageSize)
-                          ),
-                          p + 1
-                        )
-                      )
-                    }
-                    disabled={
-                      page >=
-                      Math.max(1, Math.ceil(getFiltered().length / pageSize))
-                    }
-                    variant="primary"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+            <Button
+                onClick={() => exportCsv(`${viewMode}_filtered.csv`, filteredItems)}
+                variant="success"
+                className="md:col-span-1 flex items-center justify-center gap-2"
+              >
+                <FaDownload /> Export Filtered
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* --- Data Table --- */}
+        <motion.div 
+            className="bg-gray-800/90 p-5 rounded-xl shadow-lg"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+        >
+            
+            {loading && <div className="text-center p-8 text-lg text-purple-400">Loading data...</div>}
+            
+            {!loading && items.length === 0 && (
+                <div className="text-center p-8 text-lg text-gray-500">No records found for this user group.</div>
+            )}
+
+            {!loading && items.length > 0 && (
+                <>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-separate border-spacing-y-2">
+                            <thead>
+                                <tr className="text-sm font-semibold uppercase text-purple-400 border-b-2 border-gray-700/50">
+                                    <th className="py-3 px-2">Name</th>
+                                    <th className="py-3 px-2">Email</th>
+                                    <th className="py-3 px-2">Phone</th>
+                                    {viewMode === "influencers" && (
+                                        <>
+                                            <th className="py-3 px-2">Followers</th>
+                                            <th className="py-3 px-2">Categories</th>
+                                        </>
+                                    )}
+                                    <th className="py-3 px-2">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedItems.map((it) => (
+                                    <motion.tr
+                                        key={it._id || it.id}
+                                        className="bg-gray-700/50 hover:bg-gray-700 transition duration-200 rounded-lg shadow-md cursor-pointer"
+                                        whileHover={{ scaleY: 1.05 }}
+                                    >
+                                        <td className="py-3 px-2 rounded-l-lg font-semibold text-white truncate max-w-[150px]">{it.name || "-"}</td>
+                                        <td className="py-3 px-2 text-sm text-gray-300 truncate max-w-[150px]">{it.email}</td>
+                                        <td className="py-3 px-2 text-sm text-gray-300">{it.phone || "-"}</td>
+                                        {viewMode === "influencers" && (
+                                            <>
+                                                <td className="py-3 px-2 text-sm text-cyan-400 font-medium">
+                                                    {it.followersCount ? it.followersCount.toLocaleString() : "0"}
+                                                </td>
+                                                <td className="py-3 px-2 text-xs text-gray-300">
+                                                    {(it.categories || []).slice(0, 2).join(", ")}
+                                                </td>
+                                            </>
+                                        )}
+                                        <td className="py-3 px-2 rounded-r-lg text-sm">
+                                            <Button
+                                                as={Link}
+                                                to={`/admin/${viewMode === 'influencers' ? 'influencers' : 'admins'}/${it._id || it.id}`}
+                                                variant="secondary"
+                                                size="sm"
+                                                className="text-purple-300 hover:bg-purple-900/30"
+                                            >
+                                                View
+                                            </Button>
+                                        </td>
+                                    </motion.tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="mt-8 flex items-center justify-between">
+                        <div className="text-sm text-gray-400">
+                            Showing {paginatedItems.length} of {filteredItems.length} records.
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                variant="primary"
+                                className="flex items-center gap-1"
+                            >
+                                <FaAngleLeft /> Prev
+                            </Button>
+                            <div className="px-4 py-2 bg-gray-700 rounded-lg text-white font-medium self-center">
+                                Page {page} of {totalPages}
+                            </div>
+                            <Button
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                variant="primary"
+                                className="flex items-center gap-1"
+                            >
+                                Next <FaAngleRight />
+                            </Button>
+                        </div>
+                    </div>
+                </>
+            )}
+        </motion.div>
       </div>
     </div>
   );
