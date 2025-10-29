@@ -22,6 +22,8 @@ function createApp() {
         credentials: true,
       })
     );
+    // Ensure preflight OPTIONS requests are handled for all routes (important for some hosts/proxies)
+    app.options("*", cors({ origin: frontendOrigin, credentials: true }));
   } else {
     // If FRONTEND_URL is not set, fall back to permissive CORS but warn loudly — prefer explicit env in deployments.
     // eslint-disable-next-line no-console
@@ -29,6 +31,8 @@ function createApp() {
       "FRONTEND_URL not set in environment; CORS will allow all origins. Set FRONTEND_URL in server/.env to restrict access."
     );
     app.use(cors());
+    // Also ensure OPTIONS are accepted when using permissive CORS
+    app.options("*", cors());
   }
   app.use(express.json());
 
