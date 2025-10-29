@@ -121,7 +121,7 @@ export default function Header() {
             <>
               <NavLink to="/campaigns/browse">Campaigns</NavLink>
               <NavLink to="/influencer/applications">My applications</NavLink>
-              <NavLink to="/influencer/profile">Profile</NavLink>
+              {/* <NavLink to="/influencer/profile">Profile</NavLink> */}
             </>
           ) : user && (role === "admin" || role === "superadmin") ? (
             <>
