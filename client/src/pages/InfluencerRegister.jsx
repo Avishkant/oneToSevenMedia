@@ -3,7 +3,7 @@ import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
-import { motion } from "framer-motion"; // Import motion for animations
+// import { motion } from "framer-motion"; // Import motion for animations
 import {
   PLATFORM_OPTIONS,
   PLATFORM_META,
