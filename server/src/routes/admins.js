@@ -3,6 +3,10 @@ const adminController = require("../controllers/adminController");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
 const { requirePermission } = require("../middleware/permissions");
+const multer = require("multer");
+
+// use memory storage for CSV uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
@@ -38,6 +42,17 @@ router.delete(
   auth,
   requireRole("superadmin"),
   adminController.deleteAdmin
+);
+
+// Bulk create campaigns via CSV upload or JSON array
+// Field: file (CSV) OR JSON body [{...}, ...]
+router.post(
+  "/campaigns/bulk-create",
+  auth,
+  requireRole("admin", "superadmin"),
+  requirePermission("campaign:create"),
+  upload.single("file"),
+  adminController.bulkCreateCampaigns
 );
 
 module.exports = router;

@@ -84,7 +84,6 @@ router.patch(
         "budget",
         "deliverables",
         "timeline",
-        "questions",
         "isPublic",
       ];
       const patch = {};

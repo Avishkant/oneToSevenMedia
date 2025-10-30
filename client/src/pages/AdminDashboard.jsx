@@ -263,6 +263,22 @@ export default function AdminDashboard() {
                   <FaCheckSquare /> Review Pending Applications
                 </Button>
               </motion.div>
+              {canCampaignCreate && (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    as={Link}
+                    to="/admin/campaigns/bulk-create"
+                    variant="accent"
+                    size="large"
+                    className="flex items-center gap-2"
+                  >
+                    <FaPlusCircle /> Bulk Create Campaigns
+                  </Button>
+                </motion.div>
+              )}
             </div>
           </div>
         </motion.section>

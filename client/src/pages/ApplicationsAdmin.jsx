@@ -452,7 +452,7 @@ export default function ApplicationsAdmin() {
                     <div className="space-y-3 text-sm text-gray-300">
                       {(selectedApp.answers || []).length === 0 ? (
                         <div className="text-gray-500">
-                          No custom questions answered.
+                          No answers submitted.
                         </div>
                       ) : (
                         (selectedApp.answers || []).map((ans, i) => (

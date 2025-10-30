@@ -1,5 +1,7 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
+const Campaign = require("../models/campaign");
+const { parse } = require("csv-parse/sync");
 
 // Helper: require a super-init secret header or existing superadmin
 function allowedToCreateSuper(req) {
@@ -174,6 +176,170 @@ async function deleteAdmin(req, res) {
   }
 }
 
+// Bulk-create campaigns from CSV (uploaded as multipart file field 'file') or JSON array in request body.
+async function bulkCreateCampaigns(req, res) {
+  try {
+    // Input can be JSON array or uploaded CSV file
+    let rows = [];
+    if (req.is("application/json") && Array.isArray(req.body)) {
+      rows = req.body;
+    } else if (req.file && req.file.buffer) {
+      // Use csv-parse to handle quoted fields and embedded commas
+      const raw = req.file.buffer.toString("utf8");
+      const text = raw.replace(/^\uFEFF/, ""); // strip BOM if present
+      if (!text || !text.trim())
+        return res.status(400).json({ error: "empty_file" });
+      try {
+        // parse into array of objects using header row as keys
+        const parsed = parse(text, {
+          columns: true,
+          skip_empty_lines: true,
+          relax_column_count: true,
+          trim: true,
+        });
+        if (!Array.isArray(parsed) || parsed.length === 0)
+          return res.status(400).json({ error: "no_rows" });
+        rows = parsed;
+      } catch (parseErr) {
+        // eslint-disable-next-line no-console
+        console.error("csv parse error", parseErr);
+        return res
+          .status(400)
+          .json({ error: "invalid_csv", details: parseErr.message });
+      }
+    } else {
+      return res.status(400).json({ error: "missing_payload" });
+    }
+
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(400).json({ error: "no_rows" });
+
+    // validate and normalize rows
+    const cleaned = [];
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i] || {};
+      const title = (r.title || r.Title || "").trim();
+      const brandName = (r.brandName || r.BrandName || r.brand || "").trim();
+      const category = (r.category || r.Category || "").trim();
+      if (!title || !brandName || !category) {
+        errors.push({
+          index: i + 1,
+          reason: "missing_required_fields",
+          row: r,
+        });
+        continue;
+      }
+      const doc = {
+        title,
+        brandName,
+        category,
+        followersMin: r.followersMin ? Number(r.followersMin) : 0,
+        followersMax: r.followersMax ? Number(r.followersMax) : 0,
+        location: r.location || r.Location || undefined,
+        requirements: r.requirements || r.Requirements || undefined,
+        budget: r.budget ? Number(r.budget) : 0,
+        deliverables: r.deliverables
+          ? String(r.deliverables)
+              .split("|")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        timeline: r.timeline || r.Timeline || undefined,
+        isPublic:
+          typeof r.isPublic !== "undefined"
+            ? String(r.isPublic).toLowerCase() === "true"
+            : true,
+      };
+      cleaned.push({ index: i + 1, doc });
+    }
+
+    if (cleaned.length === 0)
+      return res.status(400).json({ error: "no_valid_rows", errors });
+
+    // dedupe by title+brandName
+    const keyToRow = new Map();
+    cleaned.forEach((c) => {
+      const key = `${c.doc.title.toLowerCase()}|${c.doc.brandName.toLowerCase()}`;
+      if (!keyToRow.has(key)) keyToRow.set(key, c);
+    });
+
+    const keys = Array.from(keyToRow.keys());
+    const filters = keys.map((k) => {
+      const [title, brandName] = k.split("|");
+      return {
+        title: new RegExp(`^${escapeRegExp(title)}$`, "i"),
+        brandName: new RegExp(`^${escapeRegExp(brandName)}$`, "i"),
+      };
+    });
+
+    // find existing campaigns
+    const existing = filters.length
+      ? await Campaign.find({ $or: filters }).select("title brandName")
+      : [];
+    const existingSet = new Set(
+      existing.map(
+        (c) => `${c.title.toLowerCase()}|${c.brandName.toLowerCase()}`
+      )
+    );
+
+    const toCreate = [];
+    const skipped = [];
+    for (const key of keys) {
+      if (existingSet.has(key)) {
+        skipped.push(key);
+        continue;
+      }
+      const row = keyToRow.get(key);
+      toCreate.push(row.doc);
+    }
+
+    let created = [];
+    try {
+      if (toCreate.length > 0) {
+        created = await Campaign.insertMany(toCreate, { ordered: false });
+      }
+    } catch (err) {
+      // insertMany may throw BulkWriteError; collect created from err.result if available
+      // eslint-disable-next-line no-console
+      console.error("bulk insert error", err);
+      if (err && err.insertedDocs) created = err.insertedDocs;
+    }
+
+    // log summary for debugging: created ids, skipped keys, and any validation errors
+    try {
+      // eslint-disable-next-line no-console
+      console.log("bulkCreateCampaigns summary", {
+        toCreateCount: toCreate.length,
+        createdCount: (created || []).length,
+        createdIds: (created || []).map((c) => c && c._id).slice(0, 50),
+        skippedCount: skipped.length,
+        skippedKeys: skipped.slice(0, 50),
+        errorsCount: errors.length,
+      });
+    } catch (logErr) {
+      // eslint-disable-next-line no-console
+      console.warn("failed to log bulkCreate summary", logErr);
+    }
+
+    return res.json({
+      created: created.length || 0,
+      skipped: skipped.length,
+      errors,
+      details: { createdIds: (created || []).map((c) => c._id) },
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    return res.status(500).json({ error: err.message || "server_error" });
+  }
+}
+
+// simple escaping for RegExp special chars
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 module.exports = {
   createSuperAdmin,
   createAdmin,
@@ -183,4 +349,5 @@ module.exports = {
   getMe,
   updateAdmin,
   deleteAdmin,
+  bulkCreateCampaigns,
 };

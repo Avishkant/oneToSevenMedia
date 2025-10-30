@@ -12,7 +12,6 @@ const campaignSchema = new mongoose.Schema(
     budget: { type: Number, default: 0 },
     deliverables: [{ type: String }],
     timeline: { type: String },
-    questions: [{ type: String }],
     isPublic: { type: Boolean, default: true },
   },
   { timestamps: true }

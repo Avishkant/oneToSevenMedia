@@ -10,6 +10,7 @@ import AdminsList from "./pages/AdminsList";
 import AdminDetail from "./pages/AdminDetail";
 import CampaignsList from "./pages/CampaignsList";
 import CreateCampaign from "./pages/CreateCampaign";
+import AdminCampaignsBulk from "./pages/AdminCampaignsBulk";
 import CampaignEdit from "./pages/CampaignEdit";
 import ApplicationsAdmin from "./pages/ApplicationsAdmin";
 import AdminApplicationsOverview from "./pages/AdminApplicationsOverview";
@@ -90,6 +91,17 @@ function App() {
                 permissions={["campaign:create"]}
               >
                 <CreateCampaign />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/campaigns/bulk-create"
+            element={
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["campaign:create"]}
+              >
+                <AdminCampaignsBulk />
               </PrivateRoute>
             }
           />
