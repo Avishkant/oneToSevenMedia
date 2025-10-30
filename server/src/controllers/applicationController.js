@@ -124,35 +124,44 @@ async function exportApplications(req, res) {
       .populate("campaign")
       .populate("influencer", "name email instagram followersCount");
 
-    // CSV headers: applicationId,campaignId,campaignTitle,brandName,influencerId,influencerName,influencerEmail,instagram,followersAtApply,status,adminComment,rejectionReason
-    const headers = [
-      "applicationId",
-      "campaignId",
-      "campaignTitle",
-      "brandName",
-      "influencerId",
-      "influencerName",
-      "influencerEmail",
-      "instagram",
-      "followersAtApply",
-      "status",
-      "adminComment",
-      "rejectionReason",
-    ];
-    const rows = items.map((a) => [
-      a._id,
-      a.campaign?._id || "",
-      a.campaign?.title || "",
-      a.campaign?.brandName || "",
-      a.influencer?._id || a.influencer,
-      a.influencer?.name || "",
-      a.influencer?.email || "",
-      a.influencer?.instagram || "",
-      a.followersAtApply || "",
-      a.status || "",
-      a.adminComment || "",
-      a.rejectionReason || "",
-    ]);
+    // Allow callers to request a subset of fields via ?fields=field1,field2
+    const allowed = {
+      applicationId: (a) => a._id,
+      campaignId: (a) => a.campaign?._id || "",
+      campaignTitle: (a) => a.campaign?.title || "",
+      brandName: (a) => a.campaign?.brandName || "",
+      influencerId: (a) => a.influencer?._id || a.influencer || "",
+      influencerName: (a) => a.influencer?.name || "",
+      influencerEmail: (a) => a.influencer?.email || "",
+      instagram: (a) => a.influencer?.instagram || "",
+      followersAtApply: (a) =>
+        typeof a.followersAtApply !== "undefined" ? a.followersAtApply : "",
+      status: (a) => a.status || "",
+      adminComment: (a) => a.adminComment || "",
+      rejectionReason: (a) => a.rejectionReason || "",
+    };
+
+    let fields = null;
+    if (req.query && req.query.fields) {
+      fields = String(req.query.fields)
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s && Object.prototype.hasOwnProperty.call(allowed, s));
+    }
+    // default fields if none requested
+    if (!fields || fields.length === 0) {
+      fields = [
+        "applicationId",
+        "influencerName",
+        "influencerEmail",
+        "instagram",
+        "followersAtApply",
+        "status",
+      ];
+    }
+
+    const headers = fields;
+    const rows = items.map((a) => fields.map((f) => allowed[f](a)));
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
@@ -228,7 +237,27 @@ async function bulkReviewApplications(req, res) {
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i] || {};
-      const status = (r.status || r.Status || "").toLowerCase();
+      // normalize status field to accept common synonyms like 'accept'/'reject' or 'yes'/'no'
+      const rawStatus = String(r.status || r.Status || "")
+        .trim()
+        .toLowerCase();
+      let status = null;
+      if (
+        ["approved", "approve", "accepted", "accept", "yes", "1"].includes(
+          rawStatus
+        )
+      ) {
+        status = "approved";
+      } else if (
+        ["rejected", "reject", "declined", "decline", "no", "0"].includes(
+          rawStatus
+        )
+      ) {
+        status = "rejected";
+      } else if (rawStatus) {
+        // keep rawStatus for unknown values so we can report it
+        status = rawStatus;
+      }
       const appId =
         r.applicationId || r.application_id || r.application || r.appId || null;
       const influencerId =
@@ -240,6 +269,15 @@ async function bulkReviewApplications(req, res) {
       const reason = r.rejectionReason || r.reason || r.RejectionReason || null;
 
       try {
+        // validate presence of at least one way to identify the application
+        if (!appId && !(campaignId && (influencerId || influencerEmail))) {
+          results.errors.push({
+            row: i + 1,
+            reason: "missing_identifier",
+            note: "Each row must include applicationId OR (campaignId AND influencerEmail/influencerId)",
+          });
+          continue;
+        }
         let app = null;
         if (appId) app = await Application.findById(appId);
         else if (influencerId && campaignId)

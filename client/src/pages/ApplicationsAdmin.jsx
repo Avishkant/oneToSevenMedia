@@ -172,6 +172,54 @@ export default function ApplicationsAdmin() {
 
   // selection state per campaign for batch actions
   const [selected, setSelected] = useState({});
+  const [selectedFields, setSelectedFields] = useState({});
+  const [showFields, setShowFields] = useState({});
+
+  const FIELD_OPTIONS = [
+    { key: "applicationId", label: "Application ID" },
+    { key: "campaignId", label: "Campaign ID" },
+    { key: "campaignTitle", label: "Campaign Title" },
+    { key: "brandName", label: "Brand Name" },
+    { key: "influencerId", label: "Influencer ID" },
+    { key: "influencerName", label: "Influencer Name" },
+    { key: "influencerEmail", label: "Influencer Email" },
+    { key: "instagram", label: "Instagram" },
+    { key: "followersAtApply", label: "Followers at Apply" },
+    { key: "status", label: "Status" },
+    { key: "adminComment", label: "Admin Comment" },
+    { key: "rejectionReason", label: "Rejection Reason" },
+  ];
+
+  const DEFAULT_EXPORT_FIELDS = [
+    "applicationId",
+    "influencerName",
+    "influencerEmail",
+    "instagram",
+    "followersAtApply",
+    "status",
+  ];
+
+  const toggleField = (campId, field) =>
+    // applicationId is required for reliable import matching; ignore toggles for it
+    setSelectedFields((s) => {
+      if (field === "applicationId") return s;
+      const list = new Set(s[campId] || DEFAULT_EXPORT_FIELDS);
+      if (list.has(field)) list.delete(field);
+      else list.add(field);
+      // ensure applicationId is always present
+      list.add("applicationId");
+      return { ...s, [campId]: Array.from(list) };
+    });
+  const openFieldsFor = (campId) => {
+    setShowFields((s) => ({ ...s, [campId]: !s[campId] }));
+    // ensure selectedFields contains applicationId when opening
+    setSelectedFields((s) => ({
+      ...s,
+      [campId]: Array.from(
+        new Set([...(s[campId] || DEFAULT_EXPORT_FIELDS), "applicationId"])
+      ),
+    }));
+  };
   const toggleSelect = (campId, appId) =>
     setSelected((s) => {
       const setFor = new Set(s[campId] || []);
@@ -202,7 +250,17 @@ export default function ApplicationsAdmin() {
   const exportCampaign = async (campId) => {
     try {
       const token = auth?.token || localStorage.getItem("accessToken");
-      const res = await fetch(`/api/applications/export?campaignId=${campId}`, {
+      const params = new URLSearchParams();
+      params.set("campaignId", campId);
+      const fieldsArr = Array.from(
+        new Set([
+          ...(selectedFields[campId] || DEFAULT_EXPORT_FIELDS),
+          "applicationId",
+        ])
+      );
+      const fields = fieldsArr.join(",");
+      if (fields) params.set("fields", fields);
+      const res = await fetch(`/api/applications/export?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error("Export failed");
@@ -220,16 +278,14 @@ export default function ApplicationsAdmin() {
     );
     if (!rows.length)
       return toast?.add("No applications selected", { type: "error" });
-    const headers = [
-      "applicationId",
-      "influencerId",
-      "influencerName",
-      "influencerEmail",
-      "followersAtApply",
-      "status",
-      "adminComment",
-      "rejectionReason",
-    ];
+    const fieldsArr = Array.from(
+      new Set([
+        ...(selectedFields[campId] || DEFAULT_EXPORT_FIELDS),
+        "applicationId",
+      ])
+    );
+    const fields = fieldsArr;
+    const headers = fields;
     const esc = (v) => {
       if (v === null || typeof v === "undefined") return "";
       const s = String(v);
@@ -241,16 +297,39 @@ export default function ApplicationsAdmin() {
     const csv = [headers.join(",")]
       .concat(
         rows.map((a) =>
-          [
-            a._id,
-            a.influencer?._id || a.influencer,
-            a.influencer?.name || "",
-            a.influencer?.email || "",
-            a.followersAtApply || "",
-            a.status || "",
-            a.adminComment || "",
-            a.rejectionReason || "",
-          ]
+          fields
+            .map((f) => {
+              switch (f) {
+                case "applicationId":
+                  return a._id;
+                case "campaignId":
+                  return a.campaign?._id || "";
+                case "campaignTitle":
+                  return a.campaign?.title || "";
+                case "brandName":
+                  return a.campaign?.brandName || "";
+                case "influencerId":
+                  return a.influencer?._id || a.influencer || "";
+                case "influencerName":
+                  return a.influencer?.name || "";
+                case "influencerEmail":
+                  return a.influencer?.email || "";
+                case "instagram":
+                  return a.influencer?.instagram || "";
+                case "followersAtApply":
+                  return typeof a.followersAtApply !== "undefined"
+                    ? a.followersAtApply
+                    : "";
+                case "status":
+                  return a.status || "";
+                case "adminComment":
+                  return a.adminComment || "";
+                case "rejectionReason":
+                  return a.rejectionReason || "";
+                default:
+                  return "";
+              }
+            })
             .map(esc)
             .join(",")
         )
@@ -444,6 +523,13 @@ export default function ApplicationsAdmin() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => openFieldsFor(campId)}
+                              className="px-3 py-1 bg-gray-600 rounded text-sm"
+                            >
+                              Fields
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => exportCampaign(campId)}
                               className="px-3 py-1 bg-indigo-600 rounded text-sm"
                             >
@@ -494,6 +580,69 @@ export default function ApplicationsAdmin() {
                               </button>
                             </label>
                           </div>
+
+                          {/* fields chooser dropdown */}
+                          {showFields[campId] && (
+                            <div className="mb-3 p-3 bg-gray-800 border border-gray-700 rounded">
+                              <div className="text-sm text-gray-300 font-medium mb-2">
+                                Select fields to include in export
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {FIELD_OPTIONS.map((opt) => (
+                                  <label
+                                    key={opt.key}
+                                    className="flex items-center gap-2 text-sm"
+                                  >
+                                    {opt.key === "applicationId" ? (
+                                      <>
+                                        <input
+                                          type="checkbox"
+                                          checked={true}
+                                          disabled
+                                        />
+                                        <span className="text-gray-300">
+                                          {opt.label}{" "}
+                                          <span className="text-xs text-yellow-300">
+                                            (required)
+                                          </span>
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <input
+                                          type="checkbox"
+                                          checked={(
+                                            selectedFields[campId] ||
+                                            DEFAULT_EXPORT_FIELDS
+                                          ).includes(opt.key)}
+                                          onChange={() =>
+                                            toggleField(campId, opt.key)
+                                          }
+                                        />
+                                        <span className="text-gray-300">
+                                          {opt.label}
+                                        </span>
+                                      </>
+                                    )}
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="mt-3 flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  className="px-3 py-1 bg-gray-700 rounded text-sm"
+                                  onClick={() =>
+                                    setShowFields((s) => ({
+                                      ...s,
+                                      [campId]: false,
+                                    }))
+                                  }
+                                >
+                                  Close
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           <div className="divide-y divide-gray-700">
                             {g.apps.map((a) => (
