@@ -8,7 +8,23 @@ const campaignRoutes = require("./routes/campaigns");
 const applicationRoutes = require("./routes/applications");
 const adminRoutes = require("./routes/admins");
 const userRoutes = require("./routes/users");
-const uploadRoutes = require("./routes/uploads");
+let uploadRoutes;
+try {
+  // uploads route is optional in some checkouts (it may be an untracked helper). Try to load it
+  // and continue without failing if it's absent.
+  uploadRoutes = require("./routes/uploads");
+} catch (err) {
+  if (err && err.code === "MODULE_NOT_FOUND") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "Optional route './routes/uploads' not found — continuing without uploads route."
+    );
+    uploadRoutes = null;
+  } else {
+    // if it's a different error, rethrow so it's visible during dev
+    throw err;
+  }
+}
 
 function createApp() {
   const app = express();
@@ -64,8 +80,10 @@ function createApp() {
   app.use("/api/admins", adminRoutes);
   // mount user routes
   app.use("/api/users", userRoutes);
-  // uploads (server-side Cloudinary uploads)
-  app.use("/api/uploads", uploadRoutes);
+  // uploads (server-side Cloudinary uploads) — mount only if the route module was loaded
+  if (uploadRoutes) {
+    app.use("/api/uploads", uploadRoutes);
+  }
 
   return app;
 }
