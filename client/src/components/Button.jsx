@@ -76,8 +76,18 @@ export default function Button({
     finalProps.type = "button";
   }
 
+  // compute disabled appearance
+  const isDisabled = Boolean(finalProps.disabled);
+  const disabledClasses = isDisabled
+    ? "opacity-50 cursor-not-allowed pointer-events-none"
+    : "";
+  if (isDisabled) finalProps["aria-disabled"] = true;
+
   return (
-    <Tag className={`${classes} ${iconOnlyClasses}`} {...finalProps}>
+    <Tag
+      className={`${classes} ${iconOnlyClasses} ${disabledClasses}`}
+      {...finalProps}
+    >
       {LeftIcon ? (
         <span className={iconClassName} aria-hidden>
           {typeof LeftIcon === "function" ? <LeftIcon /> : LeftIcon}

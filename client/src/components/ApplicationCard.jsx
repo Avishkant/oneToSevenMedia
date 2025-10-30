@@ -68,6 +68,7 @@ export default function ApplicationCard({
     (a.order && a.order.status) || orderStatus !== "not-filled"
   );
   const isApproved = String((a.status || "").toLowerCase()) === "approved";
+  const isRejected = String((a.status || "").toLowerCase()) === "rejected";
   const lastAppId = useRef();
 
   useEffect(() => {
@@ -604,6 +605,7 @@ export default function ApplicationCard({
                             onClick={() => onApprove && onApprove(a)}
                             variant="success"
                             size="sm"
+                            disabled={isApproved || isRejected}
                           >
                             Approve
                           </Button>
@@ -611,6 +613,7 @@ export default function ApplicationCard({
                             onClick={() => onReject && onReject(a)}
                             variant="danger"
                             size="sm"
+                            disabled={isApproved || isRejected}
                           >
                             Reject
                           </Button>
@@ -656,6 +659,7 @@ export default function ApplicationCard({
                   onClick={() => onApprove && onApprove(a)}
                   variant="success"
                   size="sm"
+                  disabled={isApproved || isRejected}
                   leftIcon={
                     <svg
                       className="w-4 h-4"
@@ -678,6 +682,7 @@ export default function ApplicationCard({
                   onClick={() => onReject && onReject(a)}
                   variant="danger"
                   size="sm"
+                  disabled={isApproved || isRejected}
                   leftIcon={
                     <svg
                       className="w-4 h-4"
@@ -696,6 +701,8 @@ export default function ApplicationCard({
                 >
                   Reject
                 </Button>
+                {/* disable footer approve/reject when already final */}
+                {/* visually disabled handled by Button component */}
                 <Button
                   onClick={() => {
                     // For admin views, prefer the parent details handler (admin panel)
