@@ -170,6 +170,140 @@ export default function ApplicationsAdmin() {
     return acc;
   }, {});
 
+  // selection state per campaign for batch actions
+  const [selected, setSelected] = useState({});
+  const toggleSelect = (campId, appId) =>
+    setSelected((s) => {
+      const setFor = new Set(s[campId] || []);
+      if (setFor.has(appId)) setFor.delete(appId);
+      else setFor.add(appId);
+      return { ...s, [campId]: Array.from(setFor) };
+    });
+  const selectAllFor = (campId) =>
+    setSelected((s) => ({
+      ...s,
+      [campId]: (byCampaign[campId]?.apps || []).map((a) => a._id),
+    }));
+  const clearSelectionFor = (campId) =>
+    setSelected((s) => ({ ...s, [campId]: [] }));
+
+  const downloadCSV = (filename, csvText) => {
+    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCampaign = async (campId) => {
+    try {
+      const token = auth?.token || localStorage.getItem("accessToken");
+      const res = await fetch(`/api/applications/export?campaignId=${campId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const text = await res.text();
+      downloadCSV(`applications-${campId}.csv`, text);
+    } catch (err) {
+      toast?.add(err.message || "Export failed", { type: "error" });
+    }
+  };
+
+  const exportSelected = (campId) => {
+    const ids = selected[campId] || [];
+    const rows = (byCampaign[campId]?.apps || []).filter((a) =>
+      ids.includes(a._id)
+    );
+    if (!rows.length)
+      return toast?.add("No applications selected", { type: "error" });
+    const headers = [
+      "applicationId",
+      "influencerId",
+      "influencerName",
+      "influencerEmail",
+      "followersAtApply",
+      "status",
+      "adminComment",
+      "rejectionReason",
+    ];
+    const esc = (v) => {
+      if (v === null || typeof v === "undefined") return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes("\n") || s.includes('"')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+    const csv = [headers.join(",")]
+      .concat(
+        rows.map((a) =>
+          [
+            a._id,
+            a.influencer?._id || a.influencer,
+            a.influencer?.name || "",
+            a.influencer?.email || "",
+            a.followersAtApply || "",
+            a.status || "",
+            a.adminComment || "",
+            a.rejectionReason || "",
+          ]
+            .map(esc)
+            .join(",")
+        )
+      )
+      .join("\n");
+    downloadCSV(`applications-selected-${campId}.csv`, csv);
+  };
+
+  const batchAction = async (campId, action) => {
+    const ids = selected[campId] || [];
+    if (!ids.length)
+      return toast?.add("No applications selected", { type: "error" });
+    const payload = ids.map((id) => ({ applicationId: id, status: action }));
+    try {
+      const token = auth?.token || localStorage.getItem("accessToken");
+      const res = await fetch(`/api/applications/bulk-review`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Batch action failed");
+      const body = await res.json();
+      toast?.add(`Updated ${body.updated} applications`, { type: "success" });
+      await loadFor();
+      clearSelectionFor(campId);
+    } catch (err) {
+      toast?.add(err.message || "Batch action failed", { type: "error" });
+    }
+  };
+
+  const importCSV = async (campId, file) => {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const token = auth?.token || localStorage.getItem("accessToken");
+      const res = await fetch(`/api/applications/bulk-review`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: fd,
+      });
+      if (!res.ok) throw new Error("Import failed");
+      const body = await res.json();
+      toast?.add(`Imported - updated: ${body.updated}`, { type: "success" });
+      await loadFor();
+    } catch (err) {
+      toast?.add(err.message || "Import failed", { type: "error" });
+    }
+  };
+
   // --- Render UI ---
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -291,25 +425,111 @@ export default function ApplicationsAdmin() {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden border-t border-gray-700"
                       >
-                        <div className="divide-y divide-gray-700 px-4 pt-2 pb-4">
-                          {g.apps.map((a) => (
-                            <motion.div
-                              key={a._id}
-                              className="py-3"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.2 }}
+                        <div className="px-4 pt-2 pb-4">
+                          {/* batch controls for this campaign */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <button
+                              type="button"
+                              onClick={() => selectAllFor(campId)}
+                              className="px-3 py-1 bg-gray-700 rounded text-sm"
                             >
-                              <ApplicationCard
-                                application={a}
-                                showAdminActions
-                                onApprove={() => openActionModal(a, "approve")}
-                                onReject={() => openActionModal(a, "reject")}
-                                onViewDetails={() => openDetails(a)}
-                                // Assuming ApplicationCard supports modern styling via its own component file
+                              Select all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => clearSelectionFor(campId)}
+                              className="px-3 py-1 bg-gray-700 rounded text-sm"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => exportCampaign(campId)}
+                              className="px-3 py-1 bg-indigo-600 rounded text-sm"
+                            >
+                              Export campaign CSV
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => exportSelected(campId)}
+                              className="px-3 py-1 bg-indigo-500 rounded text-sm"
+                            >
+                              Export selected
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => batchAction(campId, "approved")}
+                              className="px-3 py-1 bg-emerald-600 rounded text-sm"
+                            >
+                              Approve selected
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => batchAction(campId, "rejected")}
+                              className="px-3 py-1 bg-rose-600 rounded text-sm"
+                            >
+                              Reject selected
+                            </button>
+                            <label className="ml-auto flex items-center gap-2 text-sm">
+                              <span className="text-gray-400">Import CSV</span>
+                              <input
+                                type="file"
+                                accept=".csv,text/csv"
+                                onChange={(e) =>
+                                  importCSV(campId, e.target.files[0])
+                                }
+                                className="hidden"
+                                id={`import-${campId}`}
                               />
-                            </motion.div>
-                          ))}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  document
+                                    .getElementById(`import-${campId}`)
+                                    .click()
+                                }
+                                className="px-3 py-1 bg-yellow-600 rounded text-sm"
+                              >
+                                Upload CSV
+                              </button>
+                            </label>
+                          </div>
+
+                          <div className="divide-y divide-gray-700">
+                            {g.apps.map((a) => (
+                              <motion.div
+                                key={a._id}
+                                className="py-3 flex items-start gap-3"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <div className="flex-shrink-0 mt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={(selected[campId] || []).includes(
+                                      a._id
+                                    )}
+                                    onChange={() => toggleSelect(campId, a._id)}
+                                    aria-label={`Select application ${a._id}`}
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <ApplicationCard
+                                    application={a}
+                                    showAdminActions
+                                    onApprove={() =>
+                                      openActionModal(a, "approve")
+                                    }
+                                    onReject={() =>
+                                      openActionModal(a, "reject")
+                                    }
+                                    onViewDetails={() => openDetails(a)}
+                                  />
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
                         </div>
                       </motion.div>
                     )}

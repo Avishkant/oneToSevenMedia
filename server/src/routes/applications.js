@@ -9,12 +9,17 @@ const {
   listOrders,
   approveOrder,
   rejectOrder,
+  exportApplications,
+  bulkReviewApplications,
 } = require("../controllers/applicationController");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
 const { requirePermission } = require("../middleware/permissions");
 
 const router = express.Router();
+
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
 
 // apply as influencer (auth optional: influencer id may be supplied in body for tests)
 router.post("/", auth, requireRole("influencer", "admin", "brand"), apply);
@@ -25,6 +30,25 @@ router.get(
   requireRole("admin", "superadmin"),
   (req, res, next) => next(),
   listAllApplications
+);
+
+// export applications as CSV (admin only)
+router.get(
+  "/export",
+  auth,
+  requireRole("admin", "superadmin"),
+  requirePermission("applications:review"),
+  exportApplications
+);
+
+// bulk review via JSON array or CSV upload
+router.post(
+  "/bulk-review",
+  auth,
+  requireRole("admin", "superadmin"),
+  requirePermission("applications:review"),
+  upload.single("file"),
+  bulkReviewApplications
 );
 // list by influencer (owner or admin)
 router.get(
