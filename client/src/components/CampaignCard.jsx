@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
 import Button from "./Button";
@@ -34,6 +34,8 @@ export default function CampaignCard({
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [followersCount, setFollowersCount] = useState("");
   const [applicantComment, setApplicantComment] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [isApplied, setIsApplied] = useState(Boolean(applied));
   // keep internal applied state in sync with parent-provided prop
   useEffect(() => {
@@ -62,6 +64,29 @@ export default function CampaignCard({
         <p className="text-sm text-slate-300 mb-4">
           Please confirm your current follower count.
         </p>
+        <div className="text-sm text-slate-300 mb-3">
+          {profileLoading ? (
+            <span>Loading profile…</span>
+          ) : instagramHandle ? (
+            <div>
+              Instagram: <span className="font-medium">@{instagramHandle}</span>
+            </div>
+          ) : (
+            <div>
+              No Instagram linked to your profile.{" "}
+              <Link
+                to={
+                  auth?.user?.role === "influencer"
+                    ? "/influencer/profile"
+                    : "/profile"
+                }
+                className="text-indigo-300 hover:underline"
+              >
+                Edit profile
+              </Link>
+            </div>
+          )}
+        </div>
         <input
           type="number"
           min={0}
@@ -134,6 +159,44 @@ export default function CampaignCard({
       </div>
     </div>
   ) : null;
+
+  // when modal opens, fetch current user profile to show instagram and default followers
+  useEffect(() => {
+    let mounted = true;
+    async function loadProfile() {
+      if (!showApplyModal) return;
+      if (!auth?.token) return;
+      setProfileLoading(true);
+      try {
+        const res = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        });
+        if (!res.ok) throw new Error("Failed to load profile");
+        const body = await res.json();
+        if (!mounted) return;
+        setInstagramHandle(
+          body.instagram || body.socialProfiles?.instagram || null
+        );
+        // if followersCount isn't already entered by the user, prefill from profile
+        if (
+          (followersCount === "" || followersCount === null) &&
+          typeof body.followersCount !== "undefined"
+        ) {
+          setFollowersCount(body.followersCount || "0");
+        }
+      } catch (err) {
+        // profile load failed - non-fatal
+        console.debug("loadProfile failed", err?.message || err);
+      } finally {
+        if (mounted) setProfileLoading(false);
+      }
+    }
+    loadProfile();
+    return () => (mounted = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showApplyModal]);
 
   return (
     <>
