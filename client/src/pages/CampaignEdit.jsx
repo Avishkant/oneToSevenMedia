@@ -54,6 +54,8 @@ export default function CampaignEdit() {
           : undefined,
         isPublic: !!campaign.isPublic,
         fulfillmentMethod: campaign.fulfillmentMethod || undefined,
+        influencerComment: campaign.influencerComment || undefined,
+        adminComment: campaign.adminComment || undefined,
         orderFormFields: Array.isArray(campaign.orderFormFields)
           ? campaign.orderFormFields
           : campaign.orderFormFields
@@ -102,14 +104,6 @@ export default function CampaignEdit() {
               setCampaign({ ...campaign, title: e.target.value })
             }
             placeholder="Title"
-            className="px-3 py-2 rounded bg-white/3"
-          />
-          <input
-            value={campaign.brandName}
-            onChange={(e) =>
-              setCampaign({ ...campaign, brandName: e.target.value })
-            }
-            placeholder="Brand name"
             className="px-3 py-2 rounded bg-white/3"
           />
           <input
@@ -203,6 +197,25 @@ export default function CampaignEdit() {
               setCampaign({ ...campaign, orderFormFields: e.target.value })
             }
             placeholder="e.g. orderId,amount,size"
+            className="px-3 py-2 rounded bg-white/3"
+          />
+          <label className="text-sm">Public note for creators (influencer-facing)</label>
+          <input
+            value={campaign.influencerComment || ""}
+            onChange={(e) =>
+              setCampaign({ ...campaign, influencerComment: e.target.value })
+            }
+            placeholder="A short note visible to creators"
+            className="px-3 py-2 rounded bg-white/3"
+          />
+
+          <label className="text-sm">Internal admin note (admin-only)</label>
+          <input
+            value={campaign.adminComment || ""}
+            onChange={(e) =>
+              setCampaign({ ...campaign, adminComment: e.target.value })
+            }
+            placeholder="Internal note for admins"
             className="px-3 py-2 rounded bg-white/3"
           />
           <label className="flex items-center gap-2">

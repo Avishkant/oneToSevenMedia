@@ -146,6 +146,8 @@ export default function CampaignsList() {
                     imageUrl={c.imageUrl}
                     highlight={brandMatch}
                     isPublic={c.isPublic}
+                    adminComment={c.adminComment}
+                    influencerComment={c.influencerComment}
                     actions={
                       <>
                         <Button

@@ -21,7 +21,31 @@ router.post(
       return res.status(400).json({ error: "missing_required_fields" });
     }
     try {
-      const camp = new Campaign(body);
+      // Only take allowed fields to avoid accidental injection of other props
+      const allowedCreate = [
+        "title",
+        "brandName",
+        "category",
+        "followersMin",
+        "followersMax",
+        "location",
+        "requirements",
+        "budget",
+        "deliverables",
+        "timeline",
+        "isPublic",
+        "fulfillmentMethod",
+        "orderFormFields",
+        // comment fields
+        "influencerComment",
+        "adminComment",
+        "paymentType",
+      ];
+      const doc = {};
+      allowedCreate.forEach((k) => {
+        if (Object.prototype.hasOwnProperty.call(body, k)) doc[k] = body[k];
+      });
+      const camp = new Campaign(doc);
       await camp.save();
       res.status(201).json(camp);
     } catch (err) {
@@ -88,6 +112,9 @@ router.patch(
         // allow admins to choose fulfillment method and per-campaign order fields
         "fulfillmentMethod",
         "orderFormFields",
+        // allow setting comments visible to creators or admins
+        "influencerComment",
+        "adminComment",
       ];
       const patch = {};
       allowed.forEach((k) => {

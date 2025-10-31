@@ -400,6 +400,8 @@ export default function Home() {
                   imageUrl={c.imageUrl || CAMPAIGN_IMAGE_URL}
                   applied={appliedIds.has(String(c._id))}
                   isPublic={c.isPublic}
+                  adminComment={c.adminComment}
+                  influencerComment={c.influencerComment}
                   onApplied={(id) =>
                     setAppliedIds((s) => new Set([...s, String(id)]))
                   }

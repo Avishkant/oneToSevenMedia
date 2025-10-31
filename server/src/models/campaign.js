@@ -33,6 +33,10 @@ const campaignSchema = new mongoose.Schema(
       enum: ["partial", "on_place", "on_completion", "full"],
       default: "full",
     },
+    // Optional visible note for creators (public message/instructions)
+    influencerComment: { type: String },
+    // Internal admin-only note (not returned to influencers via UI)
+    adminComment: { type: String },
   },
   { timestamps: true }
 );

@@ -17,6 +17,8 @@ export default function CreateCampaign() {
   const [isPublic, setIsPublic] = useState(true);
   const [fulfillmentMethod, setFulfillmentMethod] = useState("influencer");
   const [orderFormFields, setOrderFormFields] = useState("");
+  const [influencerComment, setInfluencerComment] = useState("");
+  const [adminComment, setAdminComment] = useState("");
   const [saving, setSaving] = useState(false);
 
   const auth = useAuth();
@@ -50,6 +52,8 @@ export default function CreateCampaign() {
               .filter(Boolean)
           : undefined,
         isPublic: !!isPublic,
+          influencerComment: influencerComment || undefined,
+          adminComment: adminComment || undefined,
       };
 
       const res = await fetch("/api/campaigns", {
@@ -163,6 +167,22 @@ export default function CreateCampaign() {
             />{" "}
             <span className="text-sm">Public</span>
           </label>
+
+          <label className="text-sm">Public note for creators (influencer-facing)</label>
+          <input
+            value={influencerComment}
+            onChange={(e) => setInfluencerComment(e.target.value)}
+            placeholder="A short note visible to creators"
+            className="px-3 py-2 rounded bg-white/3"
+          />
+
+          <label className="text-sm">Internal admin note (admin-only)</label>
+          <input
+            value={adminComment}
+            onChange={(e) => setAdminComment(e.target.value)}
+            placeholder="Internal note for admins"
+            className="px-3 py-2 rounded bg-white/3"
+          />
 
           <div className="grid grid-cols-1 gap-2">
             <label className="text-sm">Fulfillment method</label>

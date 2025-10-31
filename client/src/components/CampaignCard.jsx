@@ -26,6 +26,8 @@ export default function CampaignCard({
   imageUrl,
   highlight = false,
   isPublic = false,
+  adminComment = "",
+  influencerComment = "",
   actions = null,
   applied = false,
   onApplied = null,
@@ -292,6 +294,22 @@ export default function CampaignCard({
                     "-"
                   )}
                 </div>
+                    {/* Conditionally render comments: show influencerComment to creators/public, adminComment to admins only */}
+                    {auth?.user && auth.user.role === 'admin' ? (
+                      adminComment && adminComment.trim() !== '' ? (
+                        <div className="mt-2 text-sm text-amber-100 bg-amber-800/10 p-2 rounded">
+                          <div className="font-semibold text-xs">Admin note</div>
+                          <div className="text-xs">{adminComment}</div>
+                        </div>
+                      ) : null
+                    ) : (
+                      influencerComment && influencerComment.trim() !== '' ? (
+                        <div className="mt-2 text-sm text-slate-200 bg-white/3 p-2 rounded">
+                          <div className="font-semibold text-xs">Note</div>
+                          <div className="text-xs">{influencerComment}</div>
+                        </div>
+                      ) : null
+                    )}
               </div>
             </div>
             <div className="flex items-center gap-2">
