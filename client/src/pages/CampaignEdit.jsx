@@ -53,6 +53,15 @@ export default function CampaignEdit() {
               .filter(Boolean)
           : undefined,
         isPublic: !!campaign.isPublic,
+        fulfillmentMethod: campaign.fulfillmentMethod || undefined,
+        orderFormFields: Array.isArray(campaign.orderFormFields)
+          ? campaign.orderFormFields
+          : campaign.orderFormFields
+          ? campaign.orderFormFields
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : undefined,
       };
 
       const res = await fetch(`/api/campaigns/${id}`, {
@@ -169,6 +178,31 @@ export default function CampaignEdit() {
               setCampaign({ ...campaign, deliverables: e.target.value })
             }
             placeholder="Deliverables (comma separated)"
+            className="px-3 py-2 rounded bg-white/3"
+          />
+          <label className="text-sm">Fulfillment method</label>
+          <select
+            value={campaign.fulfillmentMethod || "influencer"}
+            onChange={(e) =>
+              setCampaign({ ...campaign, fulfillmentMethod: e.target.value })
+            }
+            className="px-3 py-2 rounded bg-white/3"
+          >
+            <option value="influencer">Influencer orders (default)</option>
+            <option value="brand">Brand delivers (brand ships product)</option>
+          </select>
+
+          <label className="text-sm">Order form fields (comma separated)</label>
+          <input
+            value={
+              Array.isArray(campaign.orderFormFields)
+                ? campaign.orderFormFields.join(", ")
+                : campaign.orderFormFields || ""
+            }
+            onChange={(e) =>
+              setCampaign({ ...campaign, orderFormFields: e.target.value })
+            }
+            placeholder="e.g. orderId,amount,size"
             className="px-3 py-2 rounded bg-white/3"
           />
           <label className="flex items-center gap-2">

@@ -44,6 +44,14 @@ const applicationSchema = new mongoose.Schema(
       country: { type: String },
       phone: { type: String },
     },
+    // snapshot of the campaign's fulfillment method at approval time
+    // 'influencer' = influencer orders themselves, 'brand' = brand ships
+    fulfillmentMethod: {
+      type: String,
+      enum: ["influencer", "brand"],
+    },
+    // snapshot of any per-campaign order fields to validate/order UI
+    orderFormFields: [{ type: String }],
     // flexible object to store arbitrary order-related fields (per-campaign)
     orderData: { type: Object },
     payout: {
@@ -52,7 +60,7 @@ const applicationSchema = new mongoose.Schema(
       paidAt: { type: Date },
       bankCode: { type: String },
       transactionRef: { type: String },
-    }, 
+    },
     rejectionReason: { type: String },
     adminComment: { type: String },
   },
@@ -62,6 +70,3 @@ const applicationSchema = new mongoose.Schema(
 module.exports =
   mongoose.models.Application ||
   mongoose.model("Application", applicationSchema);
-
-
-      

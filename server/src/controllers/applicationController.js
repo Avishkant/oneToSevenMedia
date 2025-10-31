@@ -13,6 +13,26 @@ async function approveApplication(req, res) {
     app.status = "approved";
     app.reviewer = reviewerId;
     if (comment) app.adminComment = comment;
+    // snapshot campaign delivery settings so the application carries the
+    // fulfillment method and any per-campaign order fields at the time of
+    // approval. This lets the frontend show the correct form (address vs
+    // order fields) without relying on a live campaign lookup.
+    try {
+      const campaign = await Campaign.findById(app.campaign);
+      if (campaign) {
+        if (campaign.fulfillmentMethod)
+          app.fulfillmentMethod = campaign.fulfillmentMethod;
+        if (campaign.orderFormFields)
+          app.orderFormFields = campaign.orderFormFields;
+      }
+    } catch (e) {
+      // don't fail approval if snapshotting fails
+      // eslint-disable-next-line no-console
+      console.warn(
+        "approveApplication: failed to snapshot campaign",
+        e && e.message
+      );
+    }
     if (!app.payout) app.payout = {};
     app.payout.amount = app.payout.amount || 0;
     await app.save();
@@ -44,7 +64,8 @@ async function rejectApplication(req, res) {
 
 async function apply(req, res) {
   const userId = req.body.influencer || (req.user && req.user.id);
-  const { campaignId, answers, sampleMedia, followersCount, comment } = req.body || {};
+  const { campaignId, answers, sampleMedia, followersCount, comment } =
+    req.body || {};
   if (!campaignId || !userId)
     return res.status(400).json({ error: "missing_fields" });
   try {
@@ -53,7 +74,10 @@ async function apply(req, res) {
     const influencer = await User.findById(userId);
     if (!influencer) return res.status(404).json({ error: "user_not_found" });
 
-    const existing = await Application.findOne({ campaign: campaignId, influencer: userId });
+    const existing = await Application.findOne({
+      campaign: campaignId,
+      influencer: userId,
+    });
     if (existing && existing.status !== "rejected")
       return res.status(409).json({ error: "already_applied" });
 
@@ -80,7 +104,9 @@ async function listByInfluencer(req, res) {
   const userId = req.params.userId || (req.user && req.user.id);
   if (!userId) return res.status(400).json({ error: "missing_user" });
   try {
-    const items = await Application.find({ influencer: userId }).populate("campaign");
+    const items = await Application.find({ influencer: userId }).populate(
+      "campaign"
+    );
     res.json(items);
   } catch (err) {
     console.error(err);
@@ -146,7 +172,8 @@ async function exportApplications(req, res) {
         if (f === "campaignId") return a.campaign?._id || "";
         if (f === "campaignTitle") return a.campaign?.title || "";
         if (f === "brandName") return a.campaign?.brandName || "";
-        if (f === "influencerId") return a.influencer?._id || a.influencer || "";
+        if (f === "influencerId")
+          return a.influencer?._id || a.influencer || "";
         if (f === "influencerName") return a.influencer?.name || "";
         if (f === "influencerEmail") return a.influencer?.email || "";
         if (f === "instagram") return a.influencer?.instagram || "";
@@ -198,7 +225,11 @@ async function bulkReviewApplications(req, res) {
       const text = req.file.buffer.toString("utf8");
       try {
         const parseFn = require("csv-parse/sync").parse;
-        rows = parseFn(text, { columns: true, skip_empty_lines: true, trim: true });
+        rows = parseFn(text, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+        });
       } catch {
         const lines = text.split(/\r?\n/).filter(Boolean);
         const header = lines[0].split(",").map((h) => h.trim());
@@ -222,11 +253,21 @@ async function bulkReviewApplications(req, res) {
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i] || {};
-      const rawStatus = String(r.status || r.Status || "").trim().toLowerCase();
+      const rawStatus = String(r.status || r.Status || "")
+        .trim()
+        .toLowerCase();
       let status = null;
-      if (["approved", "approve", "accepted", "accept", "yes", "1"].includes(rawStatus))
+      if (
+        ["approved", "approve", "accepted", "accept", "yes", "1"].includes(
+          rawStatus
+        )
+      )
         status = "approved";
-      else if (["rejected", "reject", "declined", "decline", "no", "0"].includes(rawStatus))
+      else if (
+        ["rejected", "reject", "declined", "decline", "no", "0"].includes(
+          rawStatus
+        )
+      )
         status = "rejected";
       else if (rawStatus) status = rawStatus;
 
@@ -252,15 +293,26 @@ async function bulkReviewApplications(req, res) {
         let app = null;
         if (appId) app = await Application.findById(appId);
         else if (influencerId && campaignId)
-          app = await Application.findOne({ influencer: influencerId, campaign: campaignId });
+          app = await Application.findOne({
+            influencer: influencerId,
+            campaign: campaignId,
+          });
         else if (influencerEmail && campaignId) {
-          const user = await User.findOne({ email: influencerEmail.toLowerCase() });
+          const user = await User.findOne({
+            email: influencerEmail.toLowerCase(),
+          });
           if (user)
-            app = await Application.findOne({ influencer: user._id, campaign: campaignId });
+            app = await Application.findOne({
+              influencer: user._id,
+              campaign: campaignId,
+            });
         }
 
         if (!app) {
-          results.notFound.push({ row: i + 1, reason: "application_not_found" });
+          results.notFound.push({
+            row: i + 1,
+            reason: "application_not_found",
+          });
           continue;
         }
 
@@ -268,6 +320,22 @@ async function bulkReviewApplications(req, res) {
           app.status = "approved";
           app.reviewer = reviewerId;
           if (comment) app.adminComment = comment;
+          // snapshot campaign settings when applying approval in bulk
+          try {
+            const campaign = await Campaign.findById(app.campaign);
+            if (campaign) {
+              if (campaign.fulfillmentMethod)
+                app.fulfillmentMethod = campaign.fulfillmentMethod;
+              if (campaign.orderFormFields)
+                app.orderFormFields = campaign.orderFormFields;
+            }
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              "bulkReviewApplications: failed to snapshot campaign",
+              e && e.message
+            );
+          }
         } else if (status === "rejected") {
           app.status = "rejected";
           app.reviewer = reviewerId;
@@ -300,8 +368,14 @@ async function bulkReviewApplications(req, res) {
 async function submitOrder(req, res) {
   const appId = req.params.id;
   const userId = req.user && req.user.id;
-  const { orderId, amount, comment, screenshotUrl, shippingAddress, orderData } =
-    req.body || {};
+  const {
+    orderId,
+    amount,
+    comment,
+    screenshotUrl,
+    shippingAddress,
+    orderData,
+  } = req.body || {};
   try {
     console.log(
       `submitOrder: appId=${appId}, userId=${userId}, orderId=${orderId}, amount=${amount}`
@@ -312,10 +386,20 @@ async function submitOrder(req, res) {
       return res.status(403).json({ error: "forbidden" });
 
     const campaign = app.campaign || (await Campaign.findById(app.campaign));
-    const method = (campaign && campaign.fulfillmentMethod) || "influencer";
+    // prefer a fulfillmentMethod snapshot stored on the application (set at
+    // approval) so that the behavior is stable even if campaign settings
+    // change later.
+    const method =
+      app.fulfillmentMethod ||
+      (campaign && campaign.fulfillmentMethod) ||
+      "influencer";
 
     if (method === "brand") {
-      if (!shippingAddress || !shippingAddress.line1 || !shippingAddress.postalCode)
+      if (
+        !shippingAddress ||
+        !shippingAddress.line1 ||
+        !shippingAddress.postalCode
+      )
         return res.status(400).json({ error: "missing_shipping_address" });
       app.shippingAddress = shippingAddress;
       if (comment) app.applicantComment = comment;

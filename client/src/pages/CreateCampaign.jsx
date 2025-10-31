@@ -15,6 +15,8 @@ export default function CreateCampaign() {
   const [budget, setBudget] = useState("");
   const [deliverables, setDeliverables] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [fulfillmentMethod, setFulfillmentMethod] = useState("influencer");
+  const [orderFormFields, setOrderFormFields] = useState("");
   const [saving, setSaving] = useState(false);
 
   const auth = useAuth();
@@ -40,6 +42,13 @@ export default function CreateCampaign() {
               .filter(Boolean)
           : undefined,
         location: location || undefined,
+        fulfillmentMethod: fulfillmentMethod || undefined,
+        orderFormFields: orderFormFields
+          ? orderFormFields
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : undefined,
         isPublic: !!isPublic,
       };
 
@@ -154,6 +163,30 @@ export default function CreateCampaign() {
             />{" "}
             <span className="text-sm">Public</span>
           </label>
+
+          <div className="grid grid-cols-1 gap-2">
+            <label className="text-sm">Fulfillment method</label>
+            <select
+              value={fulfillmentMethod}
+              onChange={(e) => setFulfillmentMethod(e.target.value)}
+              className="px-3 py-2 rounded bg-white/3"
+            >
+              <option value="influencer">Influencer orders (default)</option>
+              <option value="brand">
+                Brand delivers (brand ships product)
+              </option>
+            </select>
+
+            <label className="text-sm">
+              Order form fields (comma separated)
+            </label>
+            <input
+              value={orderFormFields}
+              onChange={(e) => setOrderFormFields(e.target.value)}
+              placeholder="e.g. orderId,amount,size"
+              className="px-3 py-2 rounded bg-white/3"
+            />
+          </div>
           <div>
             <Button type="submit" disabled={saving} variant="primary">
               {saving ? "Creating..." : "Create campaign"}

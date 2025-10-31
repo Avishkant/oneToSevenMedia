@@ -30,6 +30,16 @@ export default function OrderModal({
   const [orderId, setOrderId] = useState("");
   const [amount, setAmount] = useState("");
   const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [orderData, setOrderData] = useState({});
+  const [shippingAddress, setShippingAddress] = useState({
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
+    phone: "",
+  });
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [comment, setComment] = useState("");
@@ -40,22 +50,60 @@ export default function OrderModal({
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
   if (!open || !application) return null;
+  const methodRender =
+    application.fulfillmentMethod ||
+    application.campaign?.fulfillmentMethod ||
+    "influencer";
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const method =
+      application.fulfillmentMethod ||
+      application.campaign?.fulfillmentMethod ||
+      "influencer";
     if (uploading)
       return toast?.add("Please wait for the screenshot upload to finish", {
         type: "error",
       });
-    if (!orderId || orderId.trim() === "")
-      return toast?.add("Order ID is required", { type: "error" });
-    if (amount === "" || isNaN(Number(amount)))
-      return toast?.add("Valid amount is required", { type: "error" });
-    if (selectedFile && !screenshotUrl)
-      return toast?.add(
-        "Screenshot upload did not complete or failed. Please try again.",
-        { type: "error" }
-      );
+
+    if (method === "brand") {
+      // require minimal shipping address
+      if (
+        !shippingAddress ||
+        !shippingAddress.line1 ||
+        !shippingAddress.postalCode
+      )
+        return toast?.add(
+          "Shipping address (line1 & postal code) is required",
+          { type: "error" }
+        );
+    } else {
+      // influencer orders
+      if (!orderId || orderId.trim() === "")
+        return toast?.add("Order ID is required", { type: "error" });
+      if (amount === "" || isNaN(Number(amount)))
+        return toast?.add("Valid amount is required", { type: "error" });
+      if (selectedFile && !screenshotUrl)
+        return toast?.add(
+          "Screenshot upload did not complete or failed. Please try again.",
+          { type: "error" }
+        );
+      // if campaign/application has dynamic required fields, validate they are present
+      const dynamicFields =
+        application.orderFormFields ||
+        application.campaign?.orderFormFields ||
+        [];
+      const missing = (dynamicFields || []).filter((k) => {
+        const v = orderData[k];
+        return (
+          typeof v === "undefined" || v === null || String(v).trim() === ""
+        );
+      });
+      if (missing.length)
+        return toast?.add(`Missing order fields: ${missing.join(", ")}`, {
+          type: "error",
+        });
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`/api/applications/${application._id}/order`, {
@@ -64,12 +112,22 @@ export default function OrderModal({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          orderId: orderId.trim(),
-          amount: Number(amount),
-          screenshotUrl: screenshotUrl.trim() || undefined,
-          comment: comment.trim() || undefined,
-        }),
+        body: JSON.stringify(
+          method === "brand"
+            ? {
+                shippingAddress,
+                comment: comment.trim() || undefined,
+              }
+            : {
+                orderId: orderId.trim(),
+                amount: Number(amount),
+                screenshotUrl: screenshotUrl.trim() || undefined,
+                orderData: Object.keys(orderData).length
+                  ? orderData
+                  : undefined,
+                comment: comment.trim() || undefined,
+              }
+        ),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -187,30 +245,145 @@ export default function OrderModal({
           </span>
         </div>
 
-        <label className="block mb-4">
-          <div className="text-sm font-semibold text-gray-300 mb-1">
-            Order/Reference ID (Required)
+        {(application.fulfillmentMethod ||
+          application.campaign?.fulfillmentMethod ||
+          "influencer") === "brand" ? (
+          <div className="space-y-4 mb-4">
+            <div className="text-sm font-semibold text-gray-300">
+              Shipping Address (required)
+            </div>
+            <StyledInput
+              value={shippingAddress.line1}
+              onChange={(e) =>
+                setShippingAddress({
+                  ...shippingAddress,
+                  line1: e.target.value,
+                })
+              }
+              placeholder="Address line 1"
+            />
+            <StyledInput
+              value={shippingAddress.line2}
+              onChange={(e) =>
+                setShippingAddress({
+                  ...shippingAddress,
+                  line2: e.target.value,
+                })
+              }
+              placeholder="Address line 2 (optional)"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <StyledInput
+                value={shippingAddress.city}
+                onChange={(e) =>
+                  setShippingAddress({
+                    ...shippingAddress,
+                    city: e.target.value,
+                  })
+                }
+                placeholder="City"
+              />
+              <StyledInput
+                value={shippingAddress.state}
+                onChange={(e) =>
+                  setShippingAddress({
+                    ...shippingAddress,
+                    state: e.target.value,
+                  })
+                }
+                placeholder="State"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <StyledInput
+                value={shippingAddress.postalCode}
+                onChange={(e) =>
+                  setShippingAddress({
+                    ...shippingAddress,
+                    postalCode: e.target.value,
+                  })
+                }
+                placeholder="Postal / ZIP code"
+              />
+              <StyledInput
+                value={shippingAddress.country}
+                onChange={(e) =>
+                  setShippingAddress({
+                    ...shippingAddress,
+                    country: e.target.value,
+                  })
+                }
+                placeholder="Country"
+              />
+            </div>
+            <StyledInput
+              value={shippingAddress.phone}
+              onChange={(e) =>
+                setShippingAddress({
+                  ...shippingAddress,
+                  phone: e.target.value,
+                })
+              }
+              placeholder="Phone (optional)"
+            />
           </div>
-          <StyledInput
-            required
-            value={orderId}
-            onChange={(e) => setOrderId(e.target.value)}
-            placeholder="e.g., Brand tracking ID or link"
-          />
-        </label>
+        ) : (
+          <>
+            <label className="block mb-4">
+              <div className="text-sm font-semibold text-gray-300 mb-1">
+                Order/Reference ID (Required)
+              </div>
+              <StyledInput
+                required
+                value={orderId}
+                onChange={(e) => setOrderId(e.target.value)}
+                placeholder="e.g., Brand tracking ID or link"
+              />
+            </label>
 
-        <label className="block mb-4">
-          <div className="text-sm font-semibold text-gray-300 mb-1">
-            Final Payment Amount (Required)
-          </div>
-          <StyledInput
-            required
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="e.g., 5000"
-          />
-        </label>
+            <label className="block mb-4">
+              <div className="text-sm font-semibold text-gray-300 mb-1">
+                Final Payment Amount (Required)
+              </div>
+              <StyledInput
+                required
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="e.g., 5000"
+              />
+            </label>
+
+            {/* Dynamic order fields */}
+            {(
+              application.orderFormFields ||
+              application.campaign?.orderFormFields ||
+              []
+            ).length > 0 && (
+              <div className="mb-4">
+                <div className="text-sm font-semibold text-gray-300 mb-2">
+                  Additional order details
+                </div>
+                {(
+                  application.orderFormFields ||
+                  application.campaign?.orderFormFields ||
+                  []
+                ).map((k) => (
+                  <div className="mb-2" key={k}>
+                    <div className="text-xs text-gray-400 mb-1">{k}</div>
+                    <StyledInput
+                      value={orderData[k] || ""}
+                      onChange={(e) =>
+                        setOrderData({ ...orderData, [k]: e.target.value })
+                      }
+                      placeholder={k}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         {/* Screenshot upload area */}
         <div className="block mb-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
@@ -290,9 +463,13 @@ export default function OrderModal({
             disabled={
               submitting ||
               uploading ||
-              !orderId.trim() ||
-              amount === "" ||
-              isNaN(Number(amount))
+              (methodRender === "brand"
+                ? !(
+                    shippingAddress &&
+                    shippingAddress.line1 &&
+                    shippingAddress.postalCode
+                  )
+                : !orderId.trim() || amount === "" || isNaN(Number(amount)))
             }
             variant="success"
             className="flex items-center gap-2"
