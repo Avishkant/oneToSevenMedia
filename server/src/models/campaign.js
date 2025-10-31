@@ -13,6 +13,18 @@ const campaignSchema = new mongoose.Schema(
     deliverables: [{ type: String }],
     timeline: { type: String },
     isPublic: { type: Boolean, default: true },
+    // fulfillmentMethod controls whether the brand ships the product directly
+    // or the influencer must order it themselves. Allowed values:
+    // 'influencer' (default) - influencer places order and submits order details
+    // 'brand' - brand ships product; influencer only needs to provide shipping address
+    fulfillmentMethod: {
+      type: String,
+      enum: ["influencer", "brand"],
+      default: "influencer",
+    },
+    // optional list of extra order fields admins want to collect for this campaign
+    // examples: ['orderId','amount','size','color'] — used for rendering/exporting
+    orderFormFields: [{ type: String }],
   },
   { timestamps: true }
 );

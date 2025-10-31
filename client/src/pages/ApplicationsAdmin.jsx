@@ -48,7 +48,7 @@ export default function ApplicationsAdmin() {
   const [selectedFields, setSelectedFields] = useState({});
   const [showFields, setShowFields] = useState({});
   const [statusFilter, setStatusFilter] = useState({});
-  
+
   // Modals/Details State
   const [actionState, setActionState] = useState(null);
   const [expanded, setExpanded] = useState({});
@@ -81,7 +81,8 @@ export default function ApplicationsAdmin() {
 
   // Initial auto-load (retained)
   useEffect(() => {
-    if (!(auth?.user && ["admin", "superadmin"].includes(auth.user.role))) return;
+    if (!(auth?.user && ["admin", "superadmin"].includes(auth.user.role)))
+      return;
     let mounted = true;
     (async () => {
       if (mounted) setLoading(true);
@@ -106,7 +107,9 @@ export default function ApplicationsAdmin() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [auth?.user, auth?.user?.role, auth?.token, toast]);
 
   // --- Actions & Helpers ---
@@ -156,7 +159,7 @@ export default function ApplicationsAdmin() {
     setExpanded((s) => ({ ...s, [campId]: !s[campId] }));
   const openDetails = (app) => setSelectedApp(app);
   const closeDetails = () => setSelectedApp(null);
-  
+
   // Close details modal on ESC key
   useEffect(() => {
     function onKey(e) {
@@ -165,7 +168,6 @@ export default function ApplicationsAdmin() {
     if (selectedApp) document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [selectedApp]);
-
 
   // Group applications by campaign
   const byCampaign = apps.reduce((acc, a) => {
@@ -183,16 +185,26 @@ export default function ApplicationsAdmin() {
     if (f === "pending")
       return list.filter((a) => {
         const s = (a.status || "").toLowerCase();
-        return s !== "approved" && s !== "rejected" && s !== "order_submitted" && s !== "completed";
+        return (
+          s !== "approved" &&
+          s !== "rejected" &&
+          s !== "order_submitted" &&
+          s !== "completed"
+        );
       });
     return list.filter((a) => (a.status || "").toLowerCase() === f);
   };
-  
+
   // --- Batch Actions Logic ---
   const DEFAULT_EXPORT_FIELDS = [
-     "applicationId", "influencerName", "influencerEmail", "instagram", "followersAtApply", "status",
+    "applicationId",
+    "influencerName",
+    "influencerEmail",
+    "instagram",
+    "followersAtApply",
+    "status",
   ];
-  
+
   const FIELD_OPTIONS = [
     { key: "applicationId", label: "Application ID" },
     { key: "campaignId", label: "Campaign ID" },
@@ -207,7 +219,7 @@ export default function ApplicationsAdmin() {
     { key: "adminComment", label: "Admin Comment" },
     { key: "rejectionReason", label: "Rejection Reason" },
   ];
-  
+
   const toggleField = (campId, field) =>
     setSelectedFields((s) => {
       const list = new Set(s[campId] || DEFAULT_EXPORT_FIELDS);
@@ -217,7 +229,7 @@ export default function ApplicationsAdmin() {
       list.add("applicationId");
       return { ...s, [campId]: Array.from(list) };
     });
-  
+
   const openFieldsFor = (campId) => {
     setShowFields((s) => ({ ...s, [campId]: !s[campId] }));
     setSelectedFields((s) => ({
@@ -227,7 +239,7 @@ export default function ApplicationsAdmin() {
       ),
     }));
   };
-  
+
   const toggleSelect = (campId, appId) =>
     setSelected((s) => {
       const setFor = new Set(s[campId] || []);
@@ -235,13 +247,13 @@ export default function ApplicationsAdmin() {
       else setFor.add(appId);
       return { ...s, [campId]: Array.from(setFor) };
     });
-    
+
   const selectAllFor = (campId) =>
     setSelected((s) => ({
       ...s,
       [campId]: getFilteredApps(campId).map((a) => a._id),
     }));
-    
+
   const clearSelectionFor = (campId) =>
     setSelected((s) => ({ ...s, [campId]: [] }));
 
@@ -257,27 +269,53 @@ export default function ApplicationsAdmin() {
     URL.revokeObjectURL(url);
     toast?.add(`Exported ${filename}`, { type: "success" });
   };
-  
+
   const exportCampaign = async (campId) => {
-    // simplified for brevity: assumes server endpoint handles the field list
-    toast?.add("Initiating campaign export (API dependency)", { type: "info" });
-    // This function requires a server-side route `/api/applications/export` to work fully.
-    // For now, we simulate success until the actual API is implemented.
-    downloadCSV(`applications-${campId}-full.csv`, "applicationId,influencerName,status\n...");
+    toast?.add("Starting export…", { type: "info" });
+    try {
+      const token = auth?.token || localStorage.getItem("accessToken");
+      const fieldsArr = Array.from(
+        new Set([
+          ...(selectedFields[campId] || DEFAULT_EXPORT_FIELDS),
+          "applicationId",
+        ])
+      );
+      const params = new URLSearchParams();
+      params.set("campaignId", campId);
+      params.set("fields", fieldsArr.join(","));
+      const res = await fetch(`/api/applications/export?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Export failed");
+      }
+      const text = await res.text();
+      // if server returned empty CSV or only headers, still download so admin can inspect
+      downloadCSV(`applications-${campId}.csv`, text);
+    } catch (err) {
+      toast?.add(err.message || "Export failed", { type: "error" });
+    }
   };
 
   const exportSelected = (campId) => {
     // simplified export logic from your original function for selected rows
     const ids = selected[campId] || [];
-    const rows = (byCampaign[campId]?.apps || []).filter((a) => ids.includes(a._id));
+    const rows = (byCampaign[campId]?.apps || []).filter((a) =>
+      ids.includes(a._id)
+    );
     if (!rows.length)
       return toast?.add("No applications selected", { type: "error" });
-      
+
     // Create CSV content (placeholder for complexity)
-    const csvContent = "applicationId,influencerName,status\n" + rows.map(r => `${r._id},${r.influencer?.name || 'N/A'},${r.status}`).join('\n');
+    const csvContent =
+      "applicationId,influencerName,status\n" +
+      rows
+        .map((r) => `${r._id},${r.influencer?.name || "N/A"},${r.status}`)
+        .join("\n");
     downloadCSV(`applications-selected-${campId}.csv`, csvContent);
   };
-  
+
   const batchAction = async (campId, action) => {
     const ids = selected[campId] || [];
     if (!ids.length)
@@ -302,7 +340,7 @@ export default function ApplicationsAdmin() {
       toast?.add(err.message || "Batch action failed", { type: "error" });
     }
   };
-  
+
   const importCSV = async (campId, file) => {
     if (!file) return;
     const fd = new FormData();
@@ -395,7 +433,7 @@ export default function ApplicationsAdmin() {
               const isExpanded = !!expanded[campId];
               const filteredApps = getFilteredApps(campId);
               const totalSelected = (selected[campId] || []).length;
-              
+
               return (
                 <motion.div
                   key={campId}
@@ -404,7 +442,6 @@ export default function ApplicationsAdmin() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
-                  
                   {/* Campaign Header (Accordion Trigger) */}
                   <motion.div
                     className="p-4 cursor-pointer flex items-center justify-between transition duration-300"
@@ -449,7 +486,6 @@ export default function ApplicationsAdmin() {
                         className="overflow-hidden border-t border-gray-700"
                       >
                         <div className="px-4 pt-2 pb-4">
-                          
                           {/* Batch Controls and Filters Bar */}
                           <div className="flex flex-wrap items-center gap-2 py-3 border-b border-gray-700/50 mb-3">
                             {/* Status Filter Buttons */}
@@ -458,15 +494,33 @@ export default function ApplicationsAdmin() {
                               { key: "pending", label: "Pending" },
                               { key: "approved", label: "Approved" },
                               { key: "rejected", label: "Rejected" },
-                              { key: "order_submitted", label: "Order Submitted" },
+                              {
+                                key: "order_submitted",
+                                label: "Order Submitted",
+                              },
                             ].map((opt) => {
-                              const active = (statusFilter[campId] || "all") === opt.key;
-                              const count = g.apps.filter(a => opt.key === 'all' ? true : opt.key === 'pending' ? (a.status !== 'approved' && a.status !== 'rejected' && a.status !== 'order_submitted' && a.status !== 'completed') : a.status === opt.key).length;
+                              const active =
+                                (statusFilter[campId] || "all") === opt.key;
+                              const count = g.apps.filter((a) =>
+                                opt.key === "all"
+                                  ? true
+                                  : opt.key === "pending"
+                                  ? a.status !== "approved" &&
+                                    a.status !== "rejected" &&
+                                    a.status !== "order_submitted" &&
+                                    a.status !== "completed"
+                                  : a.status === opt.key
+                              ).length;
                               return (
                                 <motion.button
                                   key={opt.key}
                                   type="button"
-                                  onClick={() => setStatusFilter((s) => ({ ...s, [campId]: opt.key }))}
+                                  onClick={() =>
+                                    setStatusFilter((s) => ({
+                                      ...s,
+                                      [campId]: opt.key,
+                                    }))
+                                  }
                                   className={`px-3 py-1 rounded text-xs font-medium transition duration-200 ${
                                     active
                                       ? "bg-purple-600 text-white shadow-md"
@@ -481,58 +535,124 @@ export default function ApplicationsAdmin() {
                             })}
 
                             <div className="ml-4 text-sm text-gray-400">
-                                Showing <span className="font-semibold text-white">{filteredApps.length}</span> of {g.apps.length}
+                              Showing{" "}
+                              <span className="font-semibold text-white">
+                                {filteredApps.length}
+                              </span>{" "}
+                              of {g.apps.length}
                             </div>
                           </div>
-                          
+
                           {/* Batch Action and Export Toolbar */}
                           <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-700/50 rounded-lg">
-                            <span className="text-sm font-semibold text-white">Selected: {totalSelected}</span>
-                            
-                            <Button type="button" onClick={() => selectAllFor(campId)} variant="primary" size="sm" className="bg-cyan-600 hover:bg-cyan-500">
+                            <span className="text-sm font-semibold text-white">
+                              Selected: {totalSelected}
+                            </span>
+
+                            <Button
+                              type="button"
+                              onClick={() => selectAllFor(campId)}
+                              variant="primary"
+                              size="sm"
+                              className="bg-cyan-600 hover:bg-cyan-500"
+                            >
                               <FaCheck /> All ({filteredApps.length})
                             </Button>
-                            <Button type="button" onClick={() => clearSelectionFor(campId)} variant="secondary" size="sm">
+                            <Button
+                              type="button"
+                              onClick={() => clearSelectionFor(campId)}
+                              variant="secondary"
+                              size="sm"
+                            >
                               <FaTimes /> Clear
                             </Button>
-                            
-                            <Button type="button" onClick={() => batchAction(campId, "approved")} variant="success" size="sm" disabled={totalSelected === 0}>
+
+                            <Button
+                              type="button"
+                              onClick={() => batchAction(campId, "approved")}
+                              variant="success"
+                              size="sm"
+                              disabled={totalSelected === 0}
+                            >
                               Approve Selected
                             </Button>
-                            <Button type="button" onClick={() => batchAction(campId, "rejected")} variant="danger" size="sm" disabled={totalSelected === 0}>
+                            <Button
+                              type="button"
+                              onClick={() => batchAction(campId, "rejected")}
+                              variant="danger"
+                              size="sm"
+                              disabled={totalSelected === 0}
+                            >
                               <FaTrashAlt /> Reject Selected
                             </Button>
-                            
+
                             {/* Export Options */}
                             <motion.div className="ml-auto flex gap-2">
-                                <Button type="button" onClick={() => exportCampaign(campId)} variant="secondary" size="sm" className="text-purple-400 hover:bg-purple-900/30">
-                                    <FaFileExport /> Export Campaign
+                              <Button
+                                type="button"
+                                onClick={() => exportCampaign(campId)}
+                                variant="secondary"
+                                size="sm"
+                                className="text-purple-400 hover:bg-purple-900/30"
+                              >
+                                <FaFileExport /> Export Campaign
+                              </Button>
+                              <Button
+                                type="button"
+                                onClick={() => exportSelected(campId)}
+                                variant="secondary"
+                                size="sm"
+                                className="text-purple-400 hover:bg-purple-900/30"
+                                disabled={totalSelected === 0}
+                              >
+                                Export Selected ({totalSelected})
+                              </Button>
+                              <label className="relative">
+                                <Button
+                                  type="button"
+                                  onClick={() =>
+                                    document
+                                      .getElementById(`import-${campId}`)
+                                      .click()
+                                  }
+                                  variant="warning"
+                                  size="sm"
+                                  className="text-gray-900"
+                                >
+                                  <FaUpload /> Import CSV
                                 </Button>
-                                <Button type="button" onClick={() => exportSelected(campId)} variant="secondary" size="sm" className="text-purple-400 hover:bg-purple-900/30" disabled={totalSelected === 0}>
-                                    Export Selected ({totalSelected})
-                                </Button>
-                                <label className="relative">
-                                    <Button type="button" onClick={() => document.getElementById(`import-${campId}`).click()} variant="warning" size="sm" className="text-gray-900">
-                                        <FaUpload /> Import CSV
-                                    </Button>
-                                    <input type="file" accept=".csv,text/csv" id={`import-${campId}`} className="hidden" 
-                                        onChange={(e) => e.target.files.length > 0 && importCSV(campId, e.target.files[0])}
-                                    />
-                                </label>
+                                <input
+                                  type="file"
+                                  accept=".csv,text/csv"
+                                  id={`import-${campId}`}
+                                  className="hidden"
+                                  onChange={(e) =>
+                                    e.target.files.length > 0 &&
+                                    importCSV(campId, e.target.files[0])
+                                  }
+                                />
+                              </label>
                             </motion.div>
                           </div>
 
                           {/* Fields Chooser Dropdown Modal Trigger */}
                           <div className="text-right mb-4">
-                            <motion.button type="button" onClick={() => openFieldsFor(campId)} className="text-sm text-cyan-400 hover:text-cyan-300 transition" whileHover={{ scale: 1.02 }}>
-                                {showFields[campId] ? 'Hide Export Fields' : 'Configure Export Fields'}
+                            <motion.button
+                              type="button"
+                              onClick={() => openFieldsFor(campId)}
+                              className="text-sm text-cyan-400 hover:text-cyan-300 transition"
+                              whileHover={{ scale: 1.02 }}
+                            >
+                              {showFields[campId]
+                                ? "Hide Export Fields"
+                                : "Configure Export Fields"}
                             </motion.button>
                           </div>
-                          
+
                           {/* Export Fields Modal (Inline in content) */}
                           <AnimatePresence>
                             {showFields[campId] && (
-                              <motion.div 
+                              <motion.div
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: "auto" }}
                                 exit={{ opacity: 0, height: 0 }}
@@ -543,28 +663,54 @@ export default function ApplicationsAdmin() {
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                   {FIELD_OPTIONS.map((opt) => (
-                                    <label key={opt.key} className="flex items-center gap-2 text-sm text-white hover:text-cyan-400 transition cursor-pointer">
+                                    <label
+                                      key={opt.key}
+                                      className="flex items-center gap-2 text-sm text-white hover:text-cyan-400 transition cursor-pointer"
+                                    >
                                       <input
                                         type="checkbox"
-                                        checked={(selectedFields[campId] || DEFAULT_EXPORT_FIELDS).includes(opt.key)}
-                                        onChange={() => toggleField(campId, opt.key)}
+                                        checked={(
+                                          selectedFields[campId] ||
+                                          DEFAULT_EXPORT_FIELDS
+                                        ).includes(opt.key)}
+                                        onChange={() =>
+                                          toggleField(campId, opt.key)
+                                        }
                                         disabled={opt.key === "applicationId"}
-                                        className={`form-checkbox h-4 w-4 ${opt.key === 'applicationId' ? 'text-yellow-500' : 'text-cyan-500'} bg-gray-700 border-gray-600 rounded focus:ring-cyan-500`}
+                                        className={`form-checkbox h-4 w-4 ${
+                                          opt.key === "applicationId"
+                                            ? "text-yellow-500"
+                                            : "text-cyan-500"
+                                        } bg-gray-700 border-gray-600 rounded focus:ring-cyan-500`}
                                       />
                                       {opt.label}{" "}
-                                      {opt.key === "applicationId" && (<span className="text-xs text-yellow-500">(Mandatory)</span>)}
+                                      {opt.key === "applicationId" && (
+                                        <span className="text-xs text-yellow-500">
+                                          (Mandatory)
+                                        </span>
+                                      )}
                                     </label>
                                   ))}
                                 </div>
                                 <div className="mt-3 text-right">
-                                     <Button type="button" onClick={() => setShowFields((s) => ({ ...s, [campId]: false }))} variant="ghost" size="sm">
-                                         Close
-                                     </Button>
+                                  <Button
+                                    type="button"
+                                    onClick={() =>
+                                      setShowFields((s) => ({
+                                        ...s,
+                                        [campId]: false,
+                                      }))
+                                    }
+                                    variant="ghost"
+                                    size="sm"
+                                  >
+                                    Close
+                                  </Button>
                                 </div>
                               </motion.div>
                             )}
                           </AnimatePresence>
-                          
+
                           {/* List of Applications (after toolbar) */}
                           <div className="divide-y divide-gray-700">
                             {filteredApps.map((a, appIndex) => (
@@ -578,7 +724,9 @@ export default function ApplicationsAdmin() {
                                 <div className="flex-shrink-0 mt-1">
                                   <input
                                     type="checkbox"
-                                    checked={(selected[campId] || []).includes(a._id)}
+                                    checked={(selected[campId] || []).includes(
+                                      a._id
+                                    )}
                                     onChange={() => toggleSelect(campId, a._id)}
                                     aria-label={`Select application ${a._id}`}
                                     className="form-checkbox h-5 w-5 text-purple-500 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
@@ -588,15 +736,18 @@ export default function ApplicationsAdmin() {
                                   <ApplicationCard
                                     application={a}
                                     showAdminActions
-                                    onApprove={() => openActionModal(a, "approve")}
-                                    onReject={() => openActionModal(a, "reject")}
+                                    onApprove={() =>
+                                      openActionModal(a, "approve")
+                                    }
+                                    onReject={() =>
+                                      openActionModal(a, "reject")
+                                    }
                                     onViewDetails={() => openDetails(a)}
                                   />
                                 </div>
                               </motion.div>
                             ))}
                           </div>
-                          
                         </div>
                       </motion.div>
                     )}

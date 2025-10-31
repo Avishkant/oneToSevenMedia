@@ -13,13 +13,11 @@ async function approveApplication(req, res) {
     app.status = "approved";
     app.reviewer = reviewerId;
     if (comment) app.adminComment = comment;
-    // record payout as approved (not paid yet)
     if (!app.payout) app.payout = {};
     app.payout.amount = app.payout.amount || 0;
     await app.save();
     res.json(app);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
@@ -28,8 +26,7 @@ async function approveApplication(req, res) {
 async function rejectApplication(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
-  const { reason } = req.body || {};
-  const { comment } = req.body || {};
+  const { reason, comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
@@ -40,7 +37,6 @@ async function rejectApplication(req, res) {
     await app.save();
     res.json(app);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
@@ -48,8 +44,7 @@ async function rejectApplication(req, res) {
 
 async function apply(req, res) {
   const userId = req.body.influencer || (req.user && req.user.id);
-  const { campaignId, answers, sampleMedia, followersCount, comment } =
-    req.body || {};
+  const { campaignId, answers, sampleMedia, followersCount, comment } = req.body || {};
   if (!campaignId || !userId)
     return res.status(400).json({ error: "missing_fields" });
   try {
@@ -57,21 +52,17 @@ async function apply(req, res) {
     if (!campaign) return res.status(404).json({ error: "campaign_not_found" });
     const influencer = await User.findById(userId);
     if (!influencer) return res.status(404).json({ error: "user_not_found" });
-    // prevent duplicate applications from same influencer to same campaign
-    // allow re-apply only if previous application was rejected
-    const existing = await Application.findOne({
-      campaign: campaignId,
-      influencer: userId,
-    });
+
+    const existing = await Application.findOne({ campaign: campaignId, influencer: userId });
     if (existing && existing.status !== "rejected")
       return res.status(409).json({ error: "already_applied" });
+
     const app = new Application({
       campaign: campaignId,
       influencer: userId,
       answers,
       sampleMedia,
       applicantComment: comment,
-      // accept 0 as a valid value; only treat null/undefined as missing
       followersAtApply:
         typeof followersCount !== "undefined" && followersCount !== null
           ? Number(followersCount)
@@ -80,7 +71,6 @@ async function apply(req, res) {
     await app.save();
     res.status(201).json(app);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
@@ -90,12 +80,9 @@ async function listByInfluencer(req, res) {
   const userId = req.params.userId || (req.user && req.user.id);
   if (!userId) return res.status(400).json({ error: "missing_user" });
   try {
-    const items = await Application.find({ influencer: userId }).populate(
-      "campaign"
-    );
+    const items = await Application.find({ influencer: userId }).populate("campaign");
     res.json(items);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
@@ -108,13 +95,11 @@ async function listAllApplications(req, res) {
       .populate("influencer", "name email");
     res.json(items);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
 }
 
-// Export applications as CSV for a given campaignId (or all if not provided)
 async function exportApplications(req, res) {
   try {
     const { campaignId } = req.query || {};
@@ -124,31 +109,13 @@ async function exportApplications(req, res) {
       .populate("campaign")
       .populate("influencer", "name email instagram followersCount");
 
-    // Allow callers to request a subset of fields via ?fields=field1,field2
-    const allowed = {
-      applicationId: (a) => a._id,
-      campaignId: (a) => a.campaign?._id || "",
-      campaignTitle: (a) => a.campaign?.title || "",
-      brandName: (a) => a.campaign?.brandName || "",
-      influencerId: (a) => a.influencer?._id || a.influencer || "",
-      influencerName: (a) => a.influencer?.name || "",
-      influencerEmail: (a) => a.influencer?.email || "",
-      instagram: (a) => a.influencer?.instagram || "",
-      followersAtApply: (a) =>
-        typeof a.followersAtApply !== "undefined" ? a.followersAtApply : "",
-      status: (a) => a.status || "",
-      adminComment: (a) => a.adminComment || "",
-      rejectionReason: (a) => a.rejectionReason || "",
-    };
-
     let fields = null;
     if (req.query && req.query.fields) {
       fields = String(req.query.fields)
         .split(",")
         .map((s) => s.trim())
-        .filter((s) => s && Object.prototype.hasOwnProperty.call(allowed, s));
+        .filter(Boolean);
     }
-    // default fields if none requested
     if (!fields || fields.length === 0) {
       fields = [
         "applicationId",
@@ -161,15 +128,45 @@ async function exportApplications(req, res) {
     }
 
     const headers = fields;
-    const rows = items.map((a) => fields.map((f) => allowed[f](a)));
+    const getNested = (obj, path) => {
+      if (!obj || !path) return "";
+      const parts = path.split(".");
+      let cur = obj;
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
+        if (cur && Object.prototype.hasOwnProperty.call(cur, p)) cur = cur[p];
+        else return "";
+      }
+      return cur === null || typeof cur === "undefined" ? "" : cur;
+    };
 
-    res.setHeader("Content-Type", "text/csv");
+    const rows = items.map((a) =>
+      fields.map((f) => {
+        if (f === "applicationId") return a._id;
+        if (f === "campaignId") return a.campaign?._id || "";
+        if (f === "campaignTitle") return a.campaign?.title || "";
+        if (f === "brandName") return a.campaign?.brandName || "";
+        if (f === "influencerId") return a.influencer?._id || a.influencer || "";
+        if (f === "influencerName") return a.influencer?.name || "";
+        if (f === "influencerEmail") return a.influencer?.email || "";
+        if (f === "instagram") return a.influencer?.instagram || "";
+        if (f === "followersAtApply")
+          return typeof a.followersAtApply !== "undefined"
+            ? a.followersAtApply
+            : "";
+        if (f === "status") return a.status || "";
+        if (f === "adminComment") return a.adminComment || "";
+        if (f === "rejectionReason") return a.rejectionReason || "";
+        return getNested(a, f);
+      })
+    );
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="applications-${campaignId || "all"}.csv"`
     );
 
-    // simple CSV quoting
     const esc = (v) => {
       if (v === null || typeof v === "undefined") return "";
       const s = String(v);
@@ -179,33 +176,30 @@ async function exportApplications(req, res) {
       return s;
     };
 
-    const csv = [headers.map(esc).join(",")]
-      .concat(rows.map((r) => r.map(esc).join(",")))
-      .join("\n");
+    const bom = "\uFEFF";
+    const csvLines = [headers.map(esc).join(",")].concat(
+      rows.map((r) => r.map(esc).join(","))
+    );
+    const csv = bom + csvLines.join("\r\n");
 
     res.send(csv);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("exportApplications error", err);
     res.status(500).json({ error: "server_error" });
   }
 }
 
-// Bulk-review: accept JSON array or uploaded CSV with columns influencerEmail|influencerId|applicationId and status (approved/rejected), optional comment/reason
 async function bulkReviewApplications(req, res) {
   try {
     let rows = [];
     if (req.is("application/json") && Array.isArray(req.body)) {
       rows = req.body;
     } else if (req.file && req.file.buffer) {
-      // CSV parsing via csv-parse if available
-      let parseFn;
+      const text = req.file.buffer.toString("utf8");
       try {
-        // require here to avoid startup dependency if not installed
-        parseFn = require("csv-parse/sync").parse;
-      } catch (e) {
-        // fallback naive parse
-        const text = req.file.buffer.toString("utf8");
+        const parseFn = require("csv-parse/sync").parse;
+        rows = parseFn(text, { columns: true, skip_empty_lines: true, trim: true });
+      } catch {
         const lines = text.split(/\r?\n/).filter(Boolean);
         const header = lines[0].split(",").map((h) => h.trim());
         for (let i = 1; i < lines.length; i++) {
@@ -215,15 +209,6 @@ async function bulkReviewApplications(req, res) {
             obj[header[j]] = (cols[j] || "").trim();
           rows.push(obj);
         }
-      }
-      if (parseFn) {
-        const text = req.file.buffer.toString("utf8");
-        const parsed = parseFn(text, {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-        });
-        rows = parsed;
       }
     } else {
       return res.status(400).json({ error: "missing_payload" });
@@ -237,27 +222,14 @@ async function bulkReviewApplications(req, res) {
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i] || {};
-      // normalize status field to accept common synonyms like 'accept'/'reject' or 'yes'/'no'
-      const rawStatus = String(r.status || r.Status || "")
-        .trim()
-        .toLowerCase();
+      const rawStatus = String(r.status || r.Status || "").trim().toLowerCase();
       let status = null;
-      if (
-        ["approved", "approve", "accepted", "accept", "yes", "1"].includes(
-          rawStatus
-        )
-      ) {
+      if (["approved", "approve", "accepted", "accept", "yes", "1"].includes(rawStatus))
         status = "approved";
-      } else if (
-        ["rejected", "reject", "declined", "decline", "no", "0"].includes(
-          rawStatus
-        )
-      ) {
+      else if (["rejected", "reject", "declined", "decline", "no", "0"].includes(rawStatus))
         status = "rejected";
-      } else if (rawStatus) {
-        // keep rawStatus for unknown values so we can report it
-        status = rawStatus;
-      }
+      else if (rawStatus) status = rawStatus;
+
       const appId =
         r.applicationId || r.application_id || r.application || r.appId || null;
       const influencerId =
@@ -265,50 +237,38 @@ async function bulkReviewApplications(req, res) {
       const influencerEmail =
         r.influencerEmail || r.influencer_email || r.email || null;
       const campaignId = r.campaignId || r.campaign_id || r.campaign || null;
-      const comment = r.adminComment || r.comment || r.AdminComment || null;
-      const reason = r.rejectionReason || r.reason || r.RejectionReason || null;
+      const comment = r.adminComment || r.comment || null;
+      const reason = r.rejectionReason || r.reason || null;
 
       try {
-        // validate presence of at least one way to identify the application
         if (!appId && !(campaignId && (influencerId || influencerEmail))) {
           results.errors.push({
             row: i + 1,
             reason: "missing_identifier",
-            note: "Each row must include applicationId OR (campaignId AND influencerEmail/influencerId)",
           });
           continue;
         }
+
         let app = null;
         if (appId) app = await Application.findById(appId);
         else if (influencerId && campaignId)
-          app = await Application.findOne({
-            influencer: influencerId,
-            campaign: campaignId,
-          });
+          app = await Application.findOne({ influencer: influencerId, campaign: campaignId });
         else if (influencerEmail && campaignId) {
-          const user = await require("../models/user").findOne({
-            email: influencerEmail.toLowerCase(),
-          });
+          const user = await User.findOne({ email: influencerEmail.toLowerCase() });
           if (user)
-            app = await Application.findOne({
-              influencer: user._id,
-              campaign: campaignId,
-            });
+            app = await Application.findOne({ influencer: user._id, campaign: campaignId });
         }
 
         if (!app) {
-          results.notFound.push({
-            row: i + 1,
-            reason: "application_not_found",
-          });
+          results.notFound.push({ row: i + 1, reason: "application_not_found" });
           continue;
         }
 
-        if (status === "approved" || status === "approve") {
+        if (status === "approved") {
           app.status = "approved";
           app.reviewer = reviewerId;
           if (comment) app.adminComment = comment;
-        } else if (status === "rejected" || status === "reject") {
+        } else if (status === "rejected") {
           app.status = "rejected";
           app.reviewer = reviewerId;
           if (comment) app.adminComment = comment;
@@ -321,10 +281,10 @@ async function bulkReviewApplications(req, res) {
           });
           continue;
         }
+
         await app.save();
         results.updated += 1;
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("bulkReview row error", err);
         results.errors.push({ row: i + 1, reason: err.message || "error" });
       }
@@ -332,63 +292,68 @@ async function bulkReviewApplications(req, res) {
 
     res.json(results);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("bulkReviewApplications failed", err);
     res.status(500).json({ error: "server_error" });
   }
 }
 
-// influencer submits order details after application approved
 async function submitOrder(req, res) {
   const appId = req.params.id;
   const userId = req.user && req.user.id;
-  const { orderId, amount, comment, screenshotUrl } = req.body || {};
-  if (!orderId || typeof amount === "undefined")
-    return res.status(400).json({ error: "missing_fields" });
+  const { orderId, amount, comment, screenshotUrl, shippingAddress, orderData } =
+    req.body || {};
   try {
-    // debug: log incoming order submission (helps diagnose missing screenshot URL)
-    // eslint-disable-next-line no-console
     console.log(
-      `submitOrder called: appId=${appId} userId=${userId} orderId=${orderId} amount=${amount} screenshotUrl=${screenshotUrl}`
+      `submitOrder: appId=${appId}, userId=${userId}, orderId=${orderId}, amount=${amount}`
     );
-    const app = await Application.findById(appId);
+    const app = await Application.findById(appId).populate("campaign");
     if (!app) return res.status(404).json({ error: "not_found" });
-    // only the influencer who owns the application can submit order
     if (String(app.influencer) !== String(userId))
       return res.status(403).json({ error: "forbidden" });
-    app.orderId = orderId;
-    app.campaignScreenshot = screenshotUrl || app.campaignScreenshot;
-    if (!app.payout) app.payout = {};
-    app.payout.amount = Number(amount);
-    app.payout.paid = false;
-    app.payout.paidAt = undefined;
-    if (comment) app.applicantComment = comment;
-    // mark as order submitted for admin review
-    app.status = "order_submitted";
+
+    const campaign = app.campaign || (await Campaign.findById(app.campaign));
+    const method = (campaign && campaign.fulfillmentMethod) || "influencer";
+
+    if (method === "brand") {
+      if (!shippingAddress || !shippingAddress.line1 || !shippingAddress.postalCode)
+        return res.status(400).json({ error: "missing_shipping_address" });
+      app.shippingAddress = shippingAddress;
+      if (comment) app.applicantComment = comment;
+      app.status = "order_submitted";
+    } else {
+      if (!orderId || typeof amount === "undefined")
+        return res.status(400).json({ error: "missing_fields" });
+      app.orderId = orderId;
+      app.campaignScreenshot = screenshotUrl || app.campaignScreenshot;
+      if (!app.payout) app.payout = {};
+      app.payout.amount = Number(amount);
+      app.payout.paid = false;
+      if (comment) app.applicantComment = comment;
+      if (orderData && typeof orderData === "object") app.orderData = orderData;
+      app.status = "order_submitted";
+    }
     await app.save();
     res.json(app);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
 }
 
-// admin: list submitted orders for review
 async function listOrders(req, res) {
   try {
-    const items = await Application.find({ status: "order_submitted" })
+    const q = { status: "order_submitted" };
+    if (req.query && req.query.campaignId) q.campaign = req.query.campaignId;
+    const items = await Application.find(q)
       .populate("campaign")
       .populate("influencer", "name email phone followersCount");
     res.json(items);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
 }
 
-// admin approves an order (mark payout paid and set paidAt)
 async function approveOrder(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
@@ -405,7 +370,6 @@ async function approveOrder(req, res) {
     await app.save();
     res.json(app);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
@@ -418,17 +382,21 @@ async function rejectOrder(req, res) {
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
-    app.status = "approved"; // revert to approved so influencer can resubmit
+    app.status = "approved"; // revert to approved for resubmission
     app.reviewer = reviewerId;
     app.rejectionReason = reason;
     if (comment) app.adminComment = comment;
     await app.save();
     res.json(app);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
+}
+
+// Optional placeholder if your router expects this endpoint
+async function listPendingImports(req, res) {
+  res.json([]);
 }
 
 module.exports = {
@@ -443,4 +411,5 @@ module.exports = {
   rejectOrder,
   exportApplications,
   bulkReviewApplications,
+  listPendingImports,
 };

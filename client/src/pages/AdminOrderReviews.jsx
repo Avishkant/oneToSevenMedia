@@ -7,6 +7,8 @@ export default function AdminOrderReviews() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignFilter, setCampaignFilter] = useState("");
   const auth = useAuth();
   const toast = useToast();
 
@@ -30,7 +32,8 @@ export default function AdminOrderReviews() {
     setLoading(true);
     try {
       const token = auth?.token || localStorage.getItem("accessToken");
-      const res = await fetchWithRefresh(`/api/applications/orders`, {
+      const qs = campaignFilter ? `?campaignId=${campaignFilter}` : "";
+      const res = await fetchWithRefresh(`/api/applications/orders${qs}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error("Failed to load orders");
@@ -45,8 +48,26 @@ export default function AdminOrderReviews() {
 
   useEffect(() => {
     load();
+    // fetch campaigns for filter dropdown
+    (async () => {
+      try {
+        const res = await fetch(`/api/campaigns`);
+        if (res.ok) {
+          const body = await res.json();
+          setCampaigns(body || []);
+        }
+      } catch {
+        // ignore
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // reload when campaign filter changes
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignFilter]);
 
   const act = async (id, verb, extra = {}) => {
     try {
@@ -83,6 +104,145 @@ export default function AdminOrderReviews() {
         </div>
 
         <div className="glass p-4 rounded text-slate-200">
+          <div className="flex items-center gap-3 mb-4">
+            <select
+              value={campaignFilter}
+              onChange={(e) => setCampaignFilter(e.target.value)}
+              className="bg-slate-800 text-slate-200 px-3 py-2 rounded"
+            >
+              <option value="">All campaigns</option>
+              {campaigns.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.brandName} — {c.title}
+                </option>
+              ))}
+            </select>
+            <input
+              type="file"
+              accept="text/csv"
+              onChange={async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                const fd = new FormData();
+                fd.append("file", f);
+                try {
+                  const token =
+                    auth?.token || localStorage.getItem("accessToken");
+                  const res = await fetchWithRefresh(
+                    `/api/applications/bulk-review`,
+                    {
+                      method: "POST",
+                      headers: token
+                        ? { Authorization: `Bearer ${token}` }
+                        : undefined,
+                      body: fd,
+                    }
+                  );
+                  if (!res.ok) throw new Error("Import failed");
+                  const body = await res.json();
+                  toast?.add(`Imported - updated: ${body.updated}`, {
+                    type: "success",
+                  });
+                  await load();
+                } catch (err) {
+                  toast?.add(err.message || "Import failed", { type: "error" });
+                }
+              }}
+            />
+            <Button
+              onClick={async () => {
+                try {
+                  const qs = campaignFilter ? `?campaignId=${campaignFilter}` : "";
+                  const res = await fetchWithRefresh(`/api/applications/orders${qs}`);
+                  if (!res.ok) throw new Error("Failed to fetch orders for export");
+                  const rowsData = await res.json();
+                  if (!rowsData || rowsData.length === 0)
+                    return toast?.add("No orders to export", { type: "error" });
+
+                  const headers = [
+                    "applicationId",
+                    "campaignId",
+                    "campaignTitle",
+                    "brandName",
+                    "influencerId",
+                    "influencerName",
+                    "influencerEmail",
+                    "status",
+                  ];
+                  const campaignObj = campaigns.find((c) => c._id === campaignFilter);
+                  const dynamic = (campaignObj && campaignObj.orderFormFields) || [];
+                  const allHeaders = headers.concat(dynamic);
+
+                  const getNested = (obj, path) => {
+                    if (!obj || !path) return "";
+                    const parts = path.split(".");
+                    let cur = obj;
+                    for (let i = 0; i < parts.length; i++) {
+                      const p = parts[i];
+                      if (cur && Object.prototype.hasOwnProperty.call(cur, p)) cur = cur[p];
+                      else return "";
+                    }
+                    return cur === null || typeof cur === "undefined" ? "" : cur;
+                  };
+
+                  const esc = (v) => {
+                    if (v === null || typeof v === "undefined") return "";
+                    const s = String(v);
+                    if (s.includes(",") || s.includes("\n") || s.includes('"')) {
+                      return `"${s.replace(/"/g, '""')}"`;
+                    }
+                    return s;
+                  };
+
+                  const rows = rowsData.map((o) => {
+                    const base = [
+                      o._id,
+                      o.campaign?._id || "",
+                      o.campaign?.title || "",
+                      o.campaign?.brandName || "",
+                      o.influencer?._id || "",
+                      o.influencer?.name || "",
+                      o.influencer?.email || "",
+                      o.status || "",
+                    ];
+                    const dyn = dynamic.map((k) => {
+                      if (k.startsWith("shippingAddress.")) {
+                        const key = k.split(".")[1];
+                        return o.shippingAddress ? o.shippingAddress[key] : "";
+                      }
+                      return (o.orderData && getNested(o.orderData, k)) || getNested(o, k) || "";
+                    });
+                    return base.concat(dyn);
+                  });
+
+                  // prepend UTF-8 BOM for Excel compatibility and use CRLF line endings
+                  const bom = "\uFEFF";
+                  const csvLines = [allHeaders.join(",")].concat(
+                    rows.map((r) => r.map(esc).join(","))
+                  );
+                  const csv = bom + csvLines.join("\r\n");
+
+                  const blob = new Blob([csv], {
+                    type: "text/csv;charset=utf-8;",
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `orders-${campaignFilter || "all"}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                } catch (err) {
+                  toast?.add(err.message || "Export failed", { type: "error" });
+                }
+              }}
+              variant="gradient"
+              size="sm"
+            >
+              Export
+            </Button>
+          </div>
           {loading && <div className="text-sm">Loading...</div>}
           {!loading && orders.length === 0 && (
             <div className="text-sm text-slate-300">No submitted orders.</div>
@@ -102,7 +262,18 @@ export default function AdminOrderReviews() {
                         Campaign: {o.campaign?.brandName} — {o.campaign?.title}
                       </div>
                       <div className="text-sm text-slate-300">
-                        Order ID: {o.orderId} • Amount: {o.payout?.amount ?? 0}
+                        {o.campaign?.fulfillmentMethod === "brand" ? (
+                          <>
+                            Shipping Address: {o.shippingAddress?.line1 || "-"},{" "}
+                            {o.shippingAddress?.city || ""}{" "}
+                            {o.shippingAddress?.postalCode || ""}
+                          </>
+                        ) : (
+                          <>
+                            Order ID: {o.orderId} • Amount:{" "}
+                            {o.payout?.amount ?? 0}
+                          </>
+                        )}
                       </div>
                       {o.rejectionReason && (
                         <div className="text-sm text-rose-400 mt-1">
@@ -160,6 +331,32 @@ export default function AdminOrderReviews() {
                       />
                     </div>
                   )}
+                  {/* render dynamic order fields or shipping address */}
+                  {selected.app.campaign?.orderFormFields &&
+                    selected.app.campaign.orderFormFields.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-sm font-semibold">
+                          Order details
+                        </div>
+                        <div className="mt-2 text-sm text-slate-300">
+                          {selected.app.campaign.orderFormFields.map((k) => (
+                            <div key={k} className="mb-1">
+                              <span className="font-medium mr-2">{k}:</span>
+                              <span>
+                                {k.startsWith("shippingAddress.")
+                                  ? selected.app.shippingAddress &&
+                                    selected.app.shippingAddress[
+                                      k.split(".")[1]
+                                    ]
+                                  : (selected.app.orderData &&
+                                      selected.app.orderData[k]) ||
+                                    "-"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   <div className="mt-3">
                     <div className="text-sm text-slate-400">
                       Comment to influencer (optional)

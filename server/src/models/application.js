@@ -34,13 +34,25 @@ const applicationSchema = new mongoose.Schema(
     orderId: { type: String },
     productAmount: { type: Number },
     campaignScreenshot: { type: String },
+    // For brand-delivered campaigns, store the shipping address provided by influencer
+    shippingAddress: {
+      line1: { type: String },
+      line2: { type: String },
+      city: { type: String },
+      state: { type: String },
+      postalCode: { type: String },
+      country: { type: String },
+      phone: { type: String },
+    },
+    // flexible object to store arbitrary order-related fields (per-campaign)
+    orderData: { type: Object },
     payout: {
       amount: { type: Number },
       paid: { type: Boolean, default: false },
       paidAt: { type: Date },
       bankCode: { type: String },
       transactionRef: { type: String },
-    },
+    }, 
     rejectionReason: { type: String },
     adminComment: { type: String },
   },
@@ -50,3 +62,6 @@ const applicationSchema = new mongoose.Schema(
 module.exports =
   mongoose.models.Application ||
   mongoose.model("Application", applicationSchema);
+
+
+      

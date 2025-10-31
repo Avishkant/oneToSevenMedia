@@ -85,6 +85,9 @@ router.patch(
         "deliverables",
         "timeline",
         "isPublic",
+        // allow admins to choose fulfillment method and per-campaign order fields
+        "fulfillmentMethod",
+        "orderFormFields",
       ];
       const patch = {};
       allowed.forEach((k) => {

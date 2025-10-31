@@ -1,4 +1,4 @@
-const User = require("../models/user");
+  const User = require("../models/user");
 
 function requirePermission(...perms) {
   return async (req, res, next) => {
@@ -6,7 +6,7 @@ function requirePermission(...perms) {
     if (!userInfo) return res.status(401).json({ error: "missing_user" });
     // superadmin bypass
     if (userInfo.role === "superadmin") return next();
-
+ 
     try {
       const user = await User.findById(userInfo.id).select("permissions role");
       if (!user) return res.status(401).json({ error: "missing_user" });
