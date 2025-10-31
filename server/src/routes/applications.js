@@ -11,6 +11,7 @@ const {
   rejectOrder,
   exportApplications,
   bulkReviewApplications,
+  bulkReviewOrders,
 } = require("../controllers/applicationController");
 const auth = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
@@ -49,6 +50,15 @@ router.post(
   requirePermission("applications:review"),
   upload.single("file"),
   bulkReviewApplications
+);
+// bulk review for orders (approve/reject submitted orders)
+router.post(
+  "/bulk-order-review",
+  auth,
+  requireRole("admin", "superadmin"),
+  requirePermission("orders:review"),
+  upload.single("file"),
+  bulkReviewOrders
 );
 // list by influencer (owner or admin)
 router.get(

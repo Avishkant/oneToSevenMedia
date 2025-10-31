@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema(
     socialPlatforms: [{ type: String }],
     // map of platform -> url
     socialProfiles: { type: Map, of: String },
+    // Bank/payment details for payouts
+    bankAccountName: { type: String },
+    bankAccountNumber: { type: String },
+    bankName: { type: String },
+    bankIFSC: { type: String },
     categories: [{ type: String }],
     languages: [{ type: String }],
     collaborationInterests: [{ type: String }],

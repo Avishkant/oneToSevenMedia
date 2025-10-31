@@ -25,6 +25,14 @@ const campaignSchema = new mongoose.Schema(
     // optional list of extra order fields admins want to collect for this campaign
     // examples: ['orderId','amount','size','color'] — used for rendering/exporting
     orderFormFields: [{ type: String }],
+    // paymentType controls how payments for this campaign are handled
+    // values: 'partial' (partial payouts), 'on_place' (when order placed),
+    // 'on_completion' (after deliverables completed), 'full' (single full payout)
+    paymentType: {
+      type: String,
+      enum: ["partial", "on_place", "on_completion", "full"],
+      default: "full",
+    },
   },
   { timestamps: true }
 );

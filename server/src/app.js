@@ -78,6 +78,9 @@ function createApp() {
   app.use("/api/applications", applicationRoutes);
   // mount admin routes
   app.use("/api/admins", adminRoutes);
+  // mount payments routes (admin payment dashboard)
+  const paymentRoutes = require("./routes/payments");
+  app.use("/api/payments", paymentRoutes);
   // mount user routes
   app.use("/api/users", userRoutes);
   // uploads (server-side Cloudinary uploads) — mount only if the route module was loaded

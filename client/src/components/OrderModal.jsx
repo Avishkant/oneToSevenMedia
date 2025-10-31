@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useToast from "../context/useToast";
 import { motion as Motion } from "framer-motion";
 import Button from "./Button";
+import { Link } from "react-router-dom";
 import { FaHourglassHalf, FaCheckCircle, FaTimes } from "react-icons/fa";
 
 // Styled Input for dark theme
@@ -44,6 +45,59 @@ export default function OrderModal({
   const [selectedFile, setSelectedFile] = useState(null);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [generalError, setGeneralError] = useState("");
+  const [bankOk, setBankOk] = useState(true);
+
+  // load current user bank details to ensure influencer can receive payouts
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const token = token || localStorage.getItem("accessToken");
+        const res = await fetch("/api/users/me", {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) return;
+        const me = await res.json();
+        if (!mounted) return;
+        const ok = me.bankAccountNumber && me.bankAccountName && me.bankName;
+        setBankOk(Boolean(ok));
+      } catch {
+        // ignore
+      }
+    })();
+    return () => (mounted = false);
+  }, [open, application]);
+
+  useEffect(() => {
+    // pre-fill fields when modal opens so influencer can edit/resubmit
+    if (!open || !application) return;
+    setOrderId(application.orderId || "");
+    setAmount(
+      application.payout && typeof application.payout.amount !== "undefined"
+        ? String(application.payout.amount)
+        : ""
+    );
+    setScreenshotUrl(
+      application.campaignScreenshot || application.campaignScreenshot || ""
+    );
+    setOrderData(application.orderData || {});
+    setShippingAddress(
+      application.shippingAddress || {
+        line1: "",
+        line2: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
+        phone: "",
+      }
+    );
+    setComment(application.applicantComment || application.adminComment || "");
+    setErrors({});
+    setGeneralError("");
+  }, [open, application]);
 
   // Cloudinary client-side unsigned upload config (set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in your frontend env)
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -61,48 +115,47 @@ export default function OrderModal({
       application.fulfillmentMethod ||
       application.campaign?.fulfillmentMethod ||
       "influencer";
-    if (uploading)
-      return toast?.add("Please wait for the screenshot upload to finish", {
-        type: "error",
-      });
-
+    // inline validation
+    setErrors({});
+    setGeneralError("");
+    if (uploading) {
+      setGeneralError("Please wait for the screenshot upload to finish");
+      return;
+    }
+    const nextErrors = {};
     if (method === "brand") {
-      // require minimal shipping address
-      if (
-        !shippingAddress ||
-        !shippingAddress.line1 ||
-        !shippingAddress.postalCode
-      )
-        return toast?.add(
-          "Shipping address (line1 & postal code) is required",
-          { type: "error" }
-        );
+      if (!shippingAddress || !shippingAddress.line1)
+        nextErrors["shippingAddress.line1"] = "Address line 1 is required";
+      if (!shippingAddress || !shippingAddress.postalCode)
+        nextErrors["shippingAddress.postalCode"] =
+          "Postal / ZIP code is required";
     } else {
-      // influencer orders
-      if (!orderId || orderId.trim() === "")
-        return toast?.add("Order ID is required", { type: "error" });
-      if (amount === "" || isNaN(Number(amount)))
-        return toast?.add("Valid amount is required", { type: "error" });
-      if (selectedFile && !screenshotUrl)
-        return toast?.add(
-          "Screenshot upload did not complete or failed. Please try again.",
-          { type: "error" }
+      // ensure influencer has bank details before allowing order submission
+      if (!bankOk) {
+        setGeneralError(
+          "Please add your bank details in your profile before submitting order details for payout. "
         );
-      // if campaign/application has dynamic required fields, validate they are present
+        return;
+      }
+      if (!orderId || orderId.trim() === "")
+        nextErrors.orderId = "Order ID is required";
+      if (amount === "" || isNaN(Number(amount)))
+        nextErrors.amount = "Valid amount is required";
+      if (selectedFile && !screenshotUrl)
+        nextErrors.screenshot = "Screenshot upload did not complete or failed";
       const dynamicFields =
         application.orderFormFields ||
         application.campaign?.orderFormFields ||
         [];
-      const missing = (dynamicFields || []).filter((k) => {
+      (dynamicFields || []).forEach((k) => {
         const v = orderData[k];
-        return (
-          typeof v === "undefined" || v === null || String(v).trim() === ""
-        );
+        if (typeof v === "undefined" || v === null || String(v).trim() === "")
+          nextErrors[k] = `${k} is required`;
       });
-      if (missing.length)
-        return toast?.add(`Missing order fields: ${missing.join(", ")}`, {
-          type: "error",
-        });
+    }
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
     }
     setSubmitting(true);
     try {
@@ -244,6 +297,9 @@ export default function OrderModal({
               "(unknown)"}
           </span>
         </div>
+        {generalError && (
+          <div className="mb-3 text-sm text-rose-400">{generalError}</div>
+        )}
 
         {(application.fulfillmentMethod ||
           application.campaign?.fulfillmentMethod ||
@@ -254,14 +310,35 @@ export default function OrderModal({
             </div>
             <StyledInput
               value={shippingAddress.line1}
-              onChange={(e) =>
+              onChange={(e) => {
                 setShippingAddress({
                   ...shippingAddress,
                   line1: e.target.value,
-                })
-              }
+                });
+                setErrors((prev) => ({
+                  ...prev,
+                  ["shippingAddress.line1"]: undefined,
+                }));
+              }}
+              onBlur={() => {
+                if (
+                  !shippingAddress ||
+                  !shippingAddress.line1 ||
+                  String(shippingAddress.line1).trim() === ""
+                ) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    ["shippingAddress.line1"]: "Address line 1 is required",
+                  }));
+                }
+              }}
               placeholder="Address line 1"
             />
+            {errors["shippingAddress.line1"] && (
+              <div className="mt-1 text-xs text-rose-400">
+                {errors["shippingAddress.line1"]}
+              </div>
+            )}
             <StyledInput
               value={shippingAddress.line2}
               onChange={(e) =>
@@ -297,14 +374,36 @@ export default function OrderModal({
             <div className="grid grid-cols-2 gap-2">
               <StyledInput
                 value={shippingAddress.postalCode}
-                onChange={(e) =>
+                onChange={(e) => {
                   setShippingAddress({
                     ...shippingAddress,
                     postalCode: e.target.value,
-                  })
-                }
+                  });
+                  setErrors((prev) => ({
+                    ...prev,
+                    ["shippingAddress.postalCode"]: undefined,
+                  }));
+                }}
+                onBlur={() => {
+                  if (
+                    !shippingAddress ||
+                    !shippingAddress.postalCode ||
+                    String(shippingAddress.postalCode).trim() === ""
+                  ) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      ["shippingAddress.postalCode"]:
+                        "Postal / ZIP code is required",
+                    }));
+                  }
+                }}
                 placeholder="Postal / ZIP code"
               />
+              {errors["shippingAddress.postalCode"] && (
+                <div className="mt-1 text-xs text-rose-400">
+                  {errors["shippingAddress.postalCode"]}
+                </div>
+              )}
               <StyledInput
                 value={shippingAddress.country}
                 onChange={(e) =>
@@ -336,9 +435,24 @@ export default function OrderModal({
               <StyledInput
                 required
                 value={orderId}
-                onChange={(e) => setOrderId(e.target.value)}
+                onChange={(e) => {
+                  setOrderId(e.target.value);
+                  setErrors((prev) => ({ ...prev, orderId: undefined }));
+                }}
+                onBlur={() => {
+                  if (!orderId || String(orderId).trim() === "")
+                    setErrors((prev) => ({
+                      ...prev,
+                      orderId: "Order ID is required",
+                    }));
+                }}
                 placeholder="e.g., Brand tracking ID or link"
               />
+              {errors.orderId && (
+                <div className="mt-1 text-xs text-rose-400">
+                  {errors.orderId}
+                </div>
+              )}
             </label>
 
             <label className="block mb-4">
@@ -349,9 +463,24 @@ export default function OrderModal({
                 required
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setErrors((prev) => ({ ...prev, amount: undefined }));
+                }}
+                onBlur={() => {
+                  if (amount === "" || isNaN(Number(amount)))
+                    setErrors((prev) => ({
+                      ...prev,
+                      amount: "Valid amount is required",
+                    }));
+                }}
                 placeholder="e.g., 5000"
               />
+              {errors.amount && (
+                <div className="mt-1 text-xs text-rose-400">
+                  {errors.amount}
+                </div>
+              )}
             </label>
 
             {/* Dynamic order fields */}
@@ -370,14 +499,37 @@ export default function OrderModal({
                   []
                 ).map((k) => (
                   <div className="mb-2" key={k}>
-                    <div className="text-xs text-gray-400 mb-1">{k}</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-400 mb-1">
+                        {k} <span className="text-rose-400">*</span>
+                      </div>
+                    </div>
                     <StyledInput
                       value={orderData[k] || ""}
-                      onChange={(e) =>
-                        setOrderData({ ...orderData, [k]: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setOrderData({ ...orderData, [k]: e.target.value });
+                        setErrors((prev) => ({ ...prev, [k]: undefined }));
+                      }}
+                      onBlur={() => {
+                        const v = orderData[k];
+                        if (
+                          typeof v === "undefined" ||
+                          v === null ||
+                          String(v).trim() === ""
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [k]: `${k} is required`,
+                          }));
+                        }
+                      }}
                       placeholder={k}
                     />
+                    {errors[k] && (
+                      <div className="mt-1 text-xs text-rose-400">
+                        {errors[k]}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -469,7 +621,8 @@ export default function OrderModal({
                     shippingAddress.line1 &&
                     shippingAddress.postalCode
                   )
-                : !orderId.trim() || amount === "" || isNaN(Number(amount)))
+                : !orderId.trim() || amount === "" || isNaN(Number(amount))) ||
+              (methodRender !== "brand" && !bankOk)
             }
             variant="success"
             className="flex items-center gap-2"

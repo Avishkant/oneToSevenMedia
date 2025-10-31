@@ -17,12 +17,14 @@ import AdminApplicationsOverview from "./pages/AdminApplicationsOverview";
 import MyApplications from "./pages/MyApplications";
 import InfluencersList from "./pages/InfluencersList";
 import AdminOrderReviews from "./pages/AdminOrderReviews";
+import AdminPayments from "./pages/AdminPayments";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
 import BrowseCampaigns from "./pages/BrowseCampaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import Profile from "./pages/ProfileNew";
 import ProfileAdmin from "./pages/ProfileAdmin";
 import Unauthorized from "./pages/Unauthorized";
+import InfluencerPayments from "./pages/InfluencerPayments";
 // import Wallet from "./pages/Wallet";
 import PrivateRoute from "./components/PrivateRoute";
 import "./index.css";
@@ -155,10 +157,29 @@ function App() {
             }
           />
           <Route
+            path="/admin/payments"
+            element={
+              <PrivateRoute
+                roles={["admin", "superadmin"]}
+                permissions={["payments:view"]}
+              >
+                <AdminPayments />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/influencer/applications"
             element={
               <PrivateRoute roles={["influencer"]}>
                 <MyApplications />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/influencer/payments"
+            element={
+              <PrivateRoute roles={["influencer"]}>
+                <InfluencerPayments />
               </PrivateRoute>
             }
           />

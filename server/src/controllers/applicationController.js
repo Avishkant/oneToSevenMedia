@@ -1,6 +1,74 @@
 const Application = require("../models/application");
 const Campaign = require("../models/campaign");
 const User = require("../models/user");
+const Payment = require("../models/payment");
+
+// Normalize a status-like string into canonical 'approved'|'rejected' or null
+function normalizeStatus(raw) {
+  if (!raw && raw !== 0) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  // approved-like values
+  if (/^(1|yes|y|true|approve|approved|accept|accepted|epproved)$/i.test(s))
+    return "approved";
+  // rejected-like values
+  if (/^(0|no|n|false|reject|rejected|decline|declined)$/i.test(s))
+    return "rejected";
+  return s;
+}
+
+// Map human-friendly CSV header names (e.g. "Application ID", "Influencer Email")
+// to canonical internal keys used by bulk import processors.
+function mapRowKeys(row) {
+  if (!row || typeof row !== "object") return row;
+  const out = {};
+  const keyMap = {
+    // application identifiers
+    "application id": "applicationId",
+    applicationid: "applicationId",
+    "app id": "applicationId",
+    app_id: "applicationId",
+    application_id: "applicationId",
+    appid: "applicationId",
+    application: "applicationId",
+    // influencer
+    "influencer id": "influencerId",
+    influencerid: "influencerId",
+    influencer_id: "influencerId",
+    "influencer email": "influencerEmail",
+    influenceremail: "influencerEmail",
+    influencer_email: "influencerEmail",
+    email: "influencerEmail",
+    // campaign
+    "campaign id": "campaignId",
+    campaignid: "campaignId",
+    campaign_id: "campaignId",
+    campaign: "campaignId",
+    // status / action
+    status: "status",
+    state: "status",
+    result: "status",
+    outcome: "status",
+    // comments/reason
+    admincomment: "adminComment",
+    "admin comment": "adminComment",
+    rejectionreason: "rejectionReason",
+    "rejection reason": "rejectionReason",
+    reason: "rejectionReason",
+    comment: "adminComment",
+  };
+
+  Object.keys(row).forEach((k) => {
+    const nk = String(k || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+    const mapped = keyMap[nk] || keyMap[nk.replace(/ /g, "_")] || null;
+    if (mapped) out[mapped] = row[k];
+    else out[k] = row[k];
+  });
+  return out;
+}
 
 // admin actions
 async function approveApplication(req, res) {
@@ -24,6 +92,7 @@ async function approveApplication(req, res) {
           app.fulfillmentMethod = campaign.fulfillmentMethod;
         if (campaign.orderFormFields)
           app.orderFormFields = campaign.orderFormFields;
+        if (campaign.paymentType) app.paymentType = campaign.paymentType;
       }
     } catch (e) {
       // don't fail approval if snapshotting fails
@@ -245,31 +314,43 @@ async function bulkReviewApplications(req, res) {
       return res.status(400).json({ error: "missing_payload" });
     }
 
+    // normalize header keys (map human-friendly CSV headers to canonical keys)
+    rows = rows.map(mapRowKeys);
+
+    // If a campaignId was provided via query (client-side export/import),
+    // apply it to rows that don't include a campaign column so lookups
+    // by influencer+campaign work as expected.
+    const defaultCampaign = req.query && req.query.campaignId;
+    if (defaultCampaign) {
+      rows.forEach((r) => {
+        if (!r.campaignId) r.campaignId = defaultCampaign;
+      });
+    }
+
+    // normalize header keys (map human-friendly CSV headers to canonical keys)
+    rows = rows.map(mapRowKeys);
+
+    // apply default campaignId from query if present
+    const defaultCampaign2 = req.query && req.query.campaignId;
+    if (defaultCampaign2) {
+      rows.forEach((r) => {
+        if (!r.campaignId) r.campaignId = defaultCampaign2;
+      });
+    }
+
     if (!Array.isArray(rows) || rows.length === 0)
       return res.status(400).json({ error: "no_rows" });
 
     const results = { updated: 0, notFound: [], errors: [] };
     const reviewerId = req.user && req.user.id;
 
+    console.log(
+      `bulkReviewApplications: received ${rows.length} rows for review (reviewer=${reviewerId})`
+    );
+
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i] || {};
-      const rawStatus = String(r.status || r.Status || "")
-        .trim()
-        .toLowerCase();
-      let status = null;
-      if (
-        ["approved", "approve", "accepted", "accept", "yes", "1"].includes(
-          rawStatus
-        )
-      )
-        status = "approved";
-      else if (
-        ["rejected", "reject", "declined", "decline", "no", "0"].includes(
-          rawStatus
-        )
-      )
-        status = "rejected";
-      else if (rawStatus) status = rawStatus;
+      const status = normalizeStatus(r.status || r.Status || "");
 
       const appId =
         r.applicationId || r.application_id || r.application || r.appId || null;
@@ -328,6 +409,7 @@ async function bulkReviewApplications(req, res) {
                 app.fulfillmentMethod = campaign.fulfillmentMethod;
               if (campaign.orderFormFields)
                 app.orderFormFields = campaign.orderFormFields;
+              if (campaign.paymentType) app.paymentType = campaign.paymentType;
             }
           } catch (e) {
             // eslint-disable-next-line no-console
@@ -361,6 +443,189 @@ async function bulkReviewApplications(req, res) {
     res.json(results);
   } catch (err) {
     console.error("bulkReviewApplications failed", err);
+    res.status(500).json({ error: "server_error" });
+  }
+}
+
+async function bulkReviewOrders(req, res) {
+  try {
+    let rows = [];
+    if (req.is("application/json") && Array.isArray(req.body)) {
+      rows = req.body;
+    } else if (req.file && req.file.buffer) {
+      const text = req.file.buffer.toString("utf8");
+      try {
+        const parseFn = require("csv-parse/sync").parse;
+        rows = parseFn(text, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+        });
+      } catch {
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        const header = lines[0].split(",").map((h) => h.trim());
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(",");
+          const obj = {};
+          for (let j = 0; j < header.length; j++)
+            obj[header[j]] = (cols[j] || "").trim();
+          rows.push(obj);
+        }
+      }
+    } else {
+      return res.status(400).json({ error: "missing_payload" });
+    }
+
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(400).json({ error: "no_rows" });
+
+    const results = { updated: 0, notFound: [], errors: [] };
+    const reviewerId = req.user && req.user.id;
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i] || {};
+      const status = normalizeStatus(r.status || r.Status || "");
+
+      const appId =
+        r.applicationId || r.application_id || r.application || r.appId || null;
+      const influencerId =
+        r.influencerId || r.influencer_id || r.influencer || null;
+      const influencerEmail =
+        r.influencerEmail || r.influencer_email || r.email || null;
+      const campaignId = r.campaignId || r.campaign_id || r.campaign || null;
+      const comment = r.adminComment || r.comment || null;
+      const reason = r.rejectionReason || r.reason || null;
+
+      try {
+        if (!appId && !(campaignId && (influencerId || influencerEmail))) {
+          results.errors.push({ row: i + 1, reason: "missing_identifier" });
+          continue;
+        }
+
+        let app = null;
+        if (appId) app = await Application.findById(appId);
+        else if (influencerId && campaignId)
+          app = await Application.findOne({
+            influencer: influencerId,
+            campaign: campaignId,
+          });
+        else if (influencerEmail && campaignId) {
+          const user = await User.findOne({
+            email: influencerEmail.toLowerCase(),
+          });
+          if (user)
+            app = await Application.findOne({
+              influencer: user._id,
+              campaign: campaignId,
+            });
+        }
+
+        if (!app) {
+          results.notFound.push({
+            row: i + 1,
+            reason: "application_not_found",
+          });
+          continue;
+        }
+
+        console.log(
+          `bulkReviewOrders: processing row ${i + 1} -> app=${
+            app._id
+          } currentStatus=${app.status} desired=${status}`
+        );
+
+        if (status === "approved") {
+          // approveOrder logic: snapshot campaign settings so frontend can
+          // present the correct message (order accepted vs order placed)
+          try {
+            const campaignSnap = await Campaign.findById(app.campaign);
+            if (campaignSnap) {
+              if (campaignSnap.fulfillmentMethod)
+                app.fulfillmentMethod = campaignSnap.fulfillmentMethod;
+              if (campaignSnap.orderFormFields)
+                app.orderFormFields = campaignSnap.orderFormFields;
+            }
+          } catch (e) {
+            // don't fail the whole import for snapshot errors
+            console.warn(
+              "bulkReviewOrders: failed to snapshot campaign",
+              e && e.message
+            );
+          }
+
+          app.status = "completed";
+          app.reviewer = reviewerId;
+          if (!app.payout) app.payout = {};
+          // mark as approved for payout processing but not yet paid
+          app.payout.paid = false;
+          app.payout.approvedAt = new Date();
+          if (comment) app.adminComment = comment;
+          // create payment record for dashboard
+          try {
+            const amount =
+              app.payout && typeof app.payout.amount === "number"
+                ? app.payout.amount
+                : 0;
+            await Payment.create({
+              application: app._id,
+              influencer: app.influencer,
+              campaign: app.campaign,
+              amount,
+              totalPayout: amount,
+              paymentType: app.paymentType || "full",
+              status: "pending",
+            });
+          } catch (e) {
+            // log and continue
+            // eslint-disable-next-line no-console
+            console.warn(
+              "bulkReviewOrders: failed to create payment record",
+              e && e.message
+            );
+          }
+        } else if (status === "rejected") {
+          // rejectOrder logic: revert to approved so influencer can resubmit
+          // keep rejection reason and admin comment
+          app.status = "approved";
+          app.reviewer = reviewerId;
+          app.rejectionReason = reason;
+          if (comment) app.adminComment = comment;
+          // clear any submitted order fields so influencer/admin can re-fill
+          try {
+            // only clear order-specific fields, leave campaign/applicant info intact
+            app.orderId = undefined;
+            app.orderData = undefined;
+            app.campaignScreenshot = undefined;
+            // for brand flows we may want to clear shippingAddress so admin can re-enter
+            // keep existing shippingAddress if present but allow admin to overwrite
+          } catch (e) {
+            // ignore
+          }
+        } else {
+          results.errors.push({
+            row: i + 1,
+            reason: "unknown_status",
+            value: r.status,
+          });
+          continue;
+        }
+
+        await app.save();
+        console.log(
+          `bulkReviewOrders: row ${i + 1} updated app=${app._id} newStatus=${
+            app.status
+          }`
+        );
+        results.updated += 1;
+      } catch (err) {
+        console.error("bulkReviewOrders row error", err);
+        results.errors.push({ row: i + 1, reason: err.message || "error" });
+      }
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error("bulkReviewOrders failed", err);
     res.status(500).json({ error: "server_error" });
   }
 }
@@ -445,12 +710,50 @@ async function approveOrder(req, res) {
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
+    // snapshot campaign/payment settings
+    try {
+      const campaign = await Campaign.findById(app.campaign);
+      if (campaign) {
+        if (campaign.fulfillmentMethod)
+          app.fulfillmentMethod = campaign.fulfillmentMethod;
+        if (campaign.orderFormFields)
+          app.orderFormFields = campaign.orderFormFields;
+        if (campaign.paymentType) app.paymentType = campaign.paymentType;
+      }
+    } catch (e) {
+      console.warn("approveOrder: failed to snapshot campaign", e && e.message);
+    }
+
     app.status = "completed";
     app.reviewer = reviewerId;
     if (!app.payout) app.payout = {};
-    app.payout.paid = true;
-    app.payout.paidAt = new Date();
+    // mark as approved for payout processing; payment will be recorded when processed
+    app.payout.paid = false;
+    app.payout.approvedAt = new Date();
     if (comment) app.adminComment = comment;
+
+    // create a Payment record for processing by payments dashboard
+    try {
+      const amount =
+        app.payout && typeof app.payout.amount === "number"
+          ? app.payout.amount
+          : 0;
+      await Payment.create({
+        application: app._id,
+        influencer: app.influencer,
+        campaign: app.campaign,
+        amount,
+        totalPayout: amount,
+        paymentType: app.paymentType || "full",
+        status: "pending",
+      });
+    } catch (e) {
+      console.warn(
+        "approveOrder: failed to create payment record",
+        e && e.message
+      );
+    }
+
     await app.save();
     res.json(app);
   } catch (err) {
@@ -495,5 +798,6 @@ module.exports = {
   rejectOrder,
   exportApplications,
   bulkReviewApplications,
+  bulkReviewOrders,
   listPendingImports,
 };
