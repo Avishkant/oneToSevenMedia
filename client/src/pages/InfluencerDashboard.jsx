@@ -122,6 +122,7 @@ function CampaignsListInner() {
             "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&q=80&auto=format&fit=crop"
           }
           applied={appliedIds.has(String(c._id))}
+          isPublic={c.isPublic}
           onApplied={(id) => setAppliedIds((s) => new Set([...s, String(id)]))}
         />
       ))}

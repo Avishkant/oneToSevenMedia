@@ -3,6 +3,8 @@ import CampaignCard from "../components/CampaignCard";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
+// quiet lint: motion is used in JSX components below
+void motion;
 
 // --- Configuration and Placeholders ---
 const BRAND_NAME = "1TO7MEDIA";
@@ -397,6 +399,7 @@ export default function Home() {
                   requirements={c.requirements}
                   imageUrl={c.imageUrl || CAMPAIGN_IMAGE_URL}
                   applied={appliedIds.has(String(c._id))}
+                  isPublic={c.isPublic}
                   onApplied={(id) =>
                     setAppliedIds((s) => new Set([...s, String(id)]))
                   }

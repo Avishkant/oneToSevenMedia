@@ -41,6 +41,23 @@ const userSchema = new mongoose.Schema(
     // Admin fields
     permissions: [{ type: String }],
     isSuper: { type: Boolean, default: false },
+    // In-app notifications for lightweight alerts (order rejection, payment updates, etc.)
+    notifications: [
+      new mongoose.Schema(
+        {
+          type: { type: String },
+          message: { type: String },
+          application: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Application",
+          },
+          read: { type: Boolean, default: false },
+          metadata: { type: Object },
+          createdAt: { type: Date, default: Date.now },
+        },
+        { _id: false }
+      ),
+    ],
   },
   { timestamps: true }
 );

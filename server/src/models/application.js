@@ -63,6 +63,9 @@ const applicationSchema = new mongoose.Schema(
     },
     rejectionReason: { type: String },
     adminComment: { type: String },
+    // When an order is rejected and influencer must re-submit an appeal
+    needsAppeal: { type: Boolean, default: false },
+    appealFormName: { type: String },
   },
   { timestamps: true }
 );

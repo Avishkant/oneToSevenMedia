@@ -145,6 +145,7 @@ export default function CampaignsList() {
                     requirements={c.requirements}
                     imageUrl={c.imageUrl}
                     highlight={brandMatch}
+                    isPublic={c.isPublic}
                     actions={
                       <>
                         <Button

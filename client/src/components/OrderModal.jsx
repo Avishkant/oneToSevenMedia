@@ -94,6 +94,13 @@ export default function OrderModal({
         phone: "",
       }
     );
+    // if application is marked as needing an appeal, ensure orderData carries form name
+    if (application.needsAppeal && application.appealFormName) {
+      setOrderData((od) => ({
+        ...(od || {}),
+        formName: application.appealFormName,
+      }));
+    }
     setComment(application.applicantComment || application.adminComment || "");
     setErrors({});
     setGeneralError("");
@@ -159,6 +166,11 @@ export default function OrderModal({
     }
     setSubmitting(true);
     try {
+      // include appeal form name into orderData when required by the application
+      const outgoingOrderData = { ...(orderData || {}) };
+      if (application && application.needsAppeal && application.appealFormName)
+        outgoingOrderData.formName = application.appealFormName;
+
       const res = await fetch(`/api/applications/${application._id}/order`, {
         method: "PATCH",
         headers: {
@@ -175,9 +187,10 @@ export default function OrderModal({
                 orderId: orderId.trim(),
                 amount: Number(amount),
                 screenshotUrl: screenshotUrl.trim() || undefined,
-                orderData: Object.keys(orderData).length
-                  ? orderData
-                  : undefined,
+                orderData:
+                  Object.keys(outgoingOrderData).length > 0
+                    ? outgoingOrderData
+                    : undefined,
                 comment: comment.trim() || undefined,
               }
         ),
@@ -286,9 +299,27 @@ export default function OrderModal({
         onSubmit={handleSubmit}
         className="relative bg-gray-800 text-white rounded-xl p-6 w-full max-w-md z-[10002] shadow-2xl border border-purple-500/50"
       >
+        {/** Show a distinct header/banner when this is an appeal/resubmission */}
         <h2 className="text-xl font-extrabold text-cyan-400 mb-2">
-          Submit Order Completion
+          {application &&
+          (application.needsAppeal ||
+            (application.status || "").toLowerCase() === "rejected")
+            ? application.appealFormName || "Appeal Form"
+            : "Submit Order Completion"}
         </h2>
+        {application &&
+          (application.needsAppeal ||
+            (application.status || "").toLowerCase() === "rejected") && (
+            <div className="mb-3 p-3 rounded bg-rose-900/30 border border-rose-600 text-sm text-rose-300">
+              Your previous submission was rejected
+              {application.rejectionReason
+                ? `: ${application.rejectionReason}`
+                : ""}
+              . Please complete the appeal form below and resubmit. The appeal
+              form name is{" "}
+              <strong>{application.appealFormName || "appeal form"}</strong>.
+            </div>
+          )}
         <div className="text-sm text-gray-400 mb-4">
           Campaign:{" "}
           <span className="font-medium text-white">

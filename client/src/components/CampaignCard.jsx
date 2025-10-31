@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+// quiet lint: motion is used in JSX below
+void motion;
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -23,6 +25,7 @@ export default function CampaignCard({
   requirements,
   imageUrl,
   highlight = false,
+  isPublic = false,
   actions = null,
   applied = false,
   onApplied = null,
@@ -243,6 +246,12 @@ export default function CampaignCard({
               {budget && (
                 <div className="text-sm bg-white/10 text-white px-3 py-1 rounded-full backdrop-blur">
                   {budget}
+                </div>
+              )}
+              {/* Live badge for public campaigns (visible in admin/manage lists) */}
+              {isPublic && (
+                <div className="ml-2 text-sm bg-emerald-500 text-white px-3 py-1 rounded-full font-semibold">
+                  Live
                 </div>
               )}
             </div>

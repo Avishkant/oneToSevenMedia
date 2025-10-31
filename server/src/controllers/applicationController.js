@@ -584,22 +584,54 @@ async function bulkReviewOrders(req, res) {
             );
           }
         } else if (status === "rejected") {
-          // rejectOrder logic: revert to approved so influencer can resubmit
-          // keep rejection reason and admin comment
-          app.status = "approved";
+          // rejectOrder logic: mark rejected and require influencer appeal/resubmit
+          app.status = "rejected";
           app.reviewer = reviewerId;
           app.rejectionReason = reason;
+          app.needsAppeal = true;
+          app.appealFormName = app.appealFormName || "appeal form";
           if (comment) app.adminComment = comment;
-          // clear any submitted order fields so influencer/admin can re-fill
+          // clear any submitted order fields so influencer can re-fill
           try {
-            // only clear order-specific fields, leave campaign/applicant info intact
             app.orderId = undefined;
             app.orderData = undefined;
             app.campaignScreenshot = undefined;
-            // for brand flows we may want to clear shippingAddress so admin can re-enter
-            // keep existing shippingAddress if present but allow admin to overwrite
+            app.shippingAddress = undefined;
           } catch (e) {
             // ignore
+          }
+          // push a lightweight in-app notification to the influencer if present
+          try {
+            const influencerUser = await User.findById(app.influencer);
+            const camp = await Campaign.findById(app.campaign);
+            if (influencerUser) {
+              const message = `Your order for campaign '${
+                (camp && camp.title) || "(campaign)"
+              }' was rejected${
+                reason ? `: ${reason}` : ""
+              }. Please resubmit using the appeal form.`;
+              await User.updateOne(
+                { _id: influencerUser._id },
+                {
+                  $push: {
+                    notifications: {
+                      type: "order_rejected",
+                      message,
+                      application: app._id,
+                      read: false,
+                      createdAt: new Date(),
+                    },
+                  },
+                }
+              );
+            }
+          } catch (e) {
+            // log and continue
+            // eslint-disable-next-line no-console
+            console.warn(
+              "bulkReviewOrders: failed to notify influencer",
+              e && e.message
+            );
           }
         } else {
           results.errors.push({
@@ -691,12 +723,18 @@ async function submitOrder(req, res) {
 
 async function listOrders(req, res) {
   try {
-    const q = { status: "order_submitted" };
+    // include order-related statuses so admin can still see records after
+    // approval or rejection while the campaign exists
+    const q = {
+      status: { $in: ["order_submitted", "approved", "rejected", "completed"] },
+    };
     if (req.query && req.query.campaignId) q.campaign = req.query.campaignId;
     const items = await Application.find(q)
       .populate("campaign")
       .populate("influencer", "name email phone followersCount");
-    res.json(items);
+    // filter out applications whose campaign no longer exists (deleted)
+    const visible = (items || []).filter((a) => Boolean(a.campaign));
+    res.json(visible);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -769,10 +807,52 @@ async function rejectOrder(req, res) {
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
-    app.status = "approved"; // revert to approved for resubmission
+    // mark as rejected and require influencer to resubmit an appeal
+    app.status = "rejected";
     app.reviewer = reviewerId;
     app.rejectionReason = reason;
+    app.needsAppeal = true;
+    app.appealFormName = app.appealFormName || "appeal form";
     if (comment) app.adminComment = comment;
+    try {
+      app.orderId = undefined;
+      app.orderData = undefined;
+      app.campaignScreenshot = undefined;
+      app.shippingAddress = undefined;
+    } catch (e) {
+      // ignore
+    }
+
+    // push notification to influencer
+    try {
+      const influencerUser = await User.findById(app.influencer);
+      const camp = await Campaign.findById(app.campaign);
+      if (influencerUser) {
+        const message = `Your order for campaign '${
+          (camp && camp.title) || "(campaign)"
+        }' was rejected${
+          reason ? `: ${reason}` : ""
+        }. Please resubmit using the appeal form.`;
+        await User.updateOne(
+          { _id: influencerUser._id },
+          {
+            $push: {
+              notifications: {
+                type: "order_rejected",
+                message,
+                application: app._id,
+                read: false,
+                createdAt: new Date(),
+              },
+            },
+          }
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("rejectOrder: failed to notify influencer", e && e.message);
+    }
+
     await app.save();
     res.json(app);
   } catch (err) {
