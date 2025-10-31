@@ -251,8 +251,14 @@ async function bulkCreateCampaigns(req, res) {
             ? String(r.isPublic).toLowerCase() === "true"
             : true,
         // optional comments
-        influencerComment: r.influencerComment || r.InfluencerComment || r.influencer_comment || r.influencer || undefined,
-        adminComment: r.adminComment || r.AdminComment || r.admin_comment || undefined,
+        influencerComment:
+          r.influencerComment ||
+          r.InfluencerComment ||
+          r.influencer_comment ||
+          r.influencer ||
+          undefined,
+        adminComment:
+          r.adminComment || r.AdminComment || r.admin_comment || undefined,
       };
       cleaned.push({ index: i + 1, doc });
     }

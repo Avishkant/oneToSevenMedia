@@ -52,8 +52,8 @@ export default function CreateCampaign() {
               .filter(Boolean)
           : undefined,
         isPublic: !!isPublic,
-          influencerComment: influencerComment || undefined,
-          adminComment: adminComment || undefined,
+        influencerComment: influencerComment || undefined,
+        adminComment: adminComment || undefined,
       };
 
       const res = await fetch("/api/campaigns", {
@@ -168,7 +168,9 @@ export default function CreateCampaign() {
             <span className="text-sm">Public</span>
           </label>
 
-          <label className="text-sm">Public note for creators (influencer-facing)</label>
+          <label className="text-sm">
+            Public note for creators (influencer-facing)
+          </label>
           <input
             value={influencerComment}
             onChange={(e) => setInfluencerComment(e.target.value)}

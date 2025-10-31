@@ -199,7 +199,9 @@ export default function CampaignEdit() {
             placeholder="e.g. orderId,amount,size"
             className="px-3 py-2 rounded bg-white/3"
           />
-          <label className="text-sm">Public note for creators (influencer-facing)</label>
+          <label className="text-sm">
+            Public note for creators (influencer-facing)
+          </label>
           <input
             value={campaign.influencerComment || ""}
             onChange={(e) =>
