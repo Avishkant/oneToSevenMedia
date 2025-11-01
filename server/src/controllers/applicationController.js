@@ -730,16 +730,12 @@ async function listOrders(req, res) {
   try {
     // include order-related statuses so admin can still see records after
     // approval or rejection while the campaign exists
+    // Only include applications that have an order form submitted by the
+    // influencer. Admin order-review should not include generic approved/rejected
+    // applications that never progressed to order submission.
     const q = {
       status: {
-        $in: [
-          "order_submitted",
-          "order_form_approved",
-          "order_form_rejected",
-          "approved",
-          "rejected",
-          "completed",
-        ],
+        $in: ["order_submitted", "order_form_approved", "order_form_rejected"],
       },
     };
     if (req.query && req.query.campaignId) q.campaign = req.query.campaignId;

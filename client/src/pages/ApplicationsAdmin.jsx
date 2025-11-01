@@ -169,8 +169,19 @@ export default function ApplicationsAdmin() {
     return () => document.removeEventListener("keydown", onKey);
   }, [selectedApp]);
 
+  // Exclude applications that have progressed to order-review
+  // (they should appear in the Orders/OrderReview dashboard instead)
+  const orderStatuses = [
+    "order_submitted",
+    "order_form_approved",
+    "order_form_rejected",
+  ];
+  const visibleAppsList = (apps || []).filter(
+    (a) => !orderStatuses.includes((a.status || "").toLowerCase())
+  );
+
   // Group applications by campaign
-  const byCampaign = apps.reduce((acc, a) => {
+  const byCampaign = visibleAppsList.reduce((acc, a) => {
     const id = a.campaign?._id || "unknown";
     acc[id] = acc[id] || { campaign: a.campaign, apps: [] };
     acc[id].apps.push(a);
