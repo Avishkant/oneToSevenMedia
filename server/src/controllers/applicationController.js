@@ -3,6 +3,82 @@ const Campaign = require("../models/campaign");
 const User = require("../models/user");
 const Payment = require("../models/payment");
 
+// Resolve commenter IDs to display names for admin UIs. If includeNames is
+// false, we do not attach the `byName` property (used for influencer views).
+async function attachCommenterNamesToApps(apps, includeNames) {
+  if (!Array.isArray(apps) || apps.length === 0) return apps;
+  const ids = new Set();
+  apps.forEach((a) => {
+    (a.adminComments || []).forEach((c) => c.by && ids.add(String(c.by)));
+    (a.influencerComments || []).forEach((c) => c.by && ids.add(String(c.by)));
+  });
+  if (ids.size === 0) return apps;
+  const idArr = Array.from(ids);
+  const users = await User.find({ _id: { $in: idArr } })
+    .select("name")
+    .lean();
+  const map = {};
+  users.forEach((u) => {
+    if (u && u._id) map[String(u._id)] = u.name || null;
+  });
+  // attach byName only when includeNames is true
+  apps.forEach((a) => {
+    (a.adminComments || []).forEach((c) => {
+      const key = String(c.by || "");
+      if (includeNames && map[key]) c.byName = map[key];
+    });
+    (a.influencerComments || []).forEach((c) => {
+      const key = String(c.by || "");
+      if (includeNames && map[key]) c.byName = map[key];
+    });
+  });
+  return apps;
+}
+
+// comment stage helpers: stages used to categorize comments
+const STAGE_APPLICATION = "application";
+const STAGE_ORDER = "order";
+const STAGE_PAYMENT = "payment";
+
+function pushAdminCommentToApp(app, stage, comment, by) {
+  if (!comment) return;
+  app.adminComments = app.adminComments || [];
+  app.adminComments.push({ stage: stage || STAGE_APPLICATION, comment, by });
+  // keep legacy field in sync (most-recent admin comment)
+  app.adminComment = comment;
+}
+
+function pushInfluencerCommentToApp(app, stage, comment, by) {
+  if (!comment) return;
+  app.influencerComments = app.influencerComments || [];
+  app.influencerComments.push({
+    stage: stage || STAGE_APPLICATION,
+    comment,
+    by,
+  });
+  // also keep applicantComment for backward compatibility
+  app.applicantComment = comment;
+}
+
+function statusToStage(status) {
+  if (!status) return STAGE_APPLICATION;
+  const s = String(status).toLowerCase();
+  if (
+    s === "order_submitted" ||
+    s === "order_form_approved" ||
+    s === "order_form_rejected"
+  )
+    return STAGE_ORDER;
+  if (
+    s === "completed" ||
+    s === "partial_payment_processed" ||
+    s === "full_payment_processed" ||
+    s === "paid"
+  )
+    return STAGE_PAYMENT;
+  return STAGE_APPLICATION;
+}
+
 // Normalize a status-like string into canonical 'approved'|'rejected' or null
 function normalizeStatus(raw) {
   if (!raw && raw !== 0) return null;
@@ -80,7 +156,8 @@ async function approveApplication(req, res) {
     if (!app) return res.status(404).json({ error: "not_found" });
     app.status = "approved";
     app.reviewer = reviewerId;
-    if (comment) app.adminComment = comment;
+    if (comment)
+      pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
     // snapshot campaign delivery settings so the application carries the
     // fulfillment method and any per-campaign order fields at the time of
     // approval. This lets the frontend show the correct form (address vs
@@ -123,7 +200,8 @@ async function rejectApplication(req, res) {
     app.status = "rejected";
     app.reviewer = reviewerId;
     app.rejectionReason = reason;
-    if (comment) app.adminComment = comment;
+    if (comment)
+      pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
     await app.save();
     res.json(app);
   } catch (err) {
@@ -177,7 +255,23 @@ async function listByInfluencer(req, res) {
     const items = await Application.find({ influencer: userId }).populate(
       "campaign"
     );
-    res.json(items);
+    // For influencer views, only expose the admin comment relevant to the
+    // application's current stage. Admins (other endpoints) still receive
+    // the full `adminComments` history.
+    const out = (items || []).map((a) => {
+      const obj = a && a.toObject ? a.toObject() : a;
+      const stage = statusToStage(obj.status);
+      const adminComments = obj.adminComments || [];
+      // find most recent admin comment for this stage
+      const recent = [...adminComments]
+        .reverse()
+        .find((c) => c.stage === stage);
+      obj.adminComment = recent ? recent.comment : obj.adminComment || null;
+      // include influencerComments for influencer to see their own notes
+      obj.influencerComments = obj.influencerComments || [];
+      return obj;
+    });
+    res.json(out);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -189,7 +283,12 @@ async function listAllApplications(req, res) {
     const items = await Application.find({})
       .populate("campaign")
       .populate("influencer", "name email");
-    res.json(items);
+    // Admins should see who left each comment; influencers (other callers)
+    // should not. Determine caller role and attach names accordingly.
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    const objs = (items || []).map((i) => (i && i.toObject ? i.toObject() : i));
+    await attachCommenterNamesToApps(objs, !!isAdmin);
+    res.json(objs);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -401,7 +500,8 @@ async function bulkReviewApplications(req, res) {
         if (status === "approved") {
           app.status = "approved";
           app.reviewer = reviewerId;
-          if (comment) app.adminComment = comment;
+          if (comment)
+            pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
           // snapshot campaign settings when applying approval in bulk
           try {
             const campaign = await Campaign.findById(app.campaign);
@@ -424,7 +524,8 @@ async function bulkReviewApplications(req, res) {
         } else if (status === "rejected") {
           app.status = "rejected";
           app.reviewer = reviewerId;
-          if (comment) app.adminComment = comment;
+          if (comment)
+            pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
           if (reason) app.rejectionReason = reason;
         } else {
           results.errors.push({
@@ -564,7 +665,8 @@ async function bulkReviewOrders(req, res) {
           // mark as approved for payout processing but not yet paid
           app.payout.paid = false;
           app.payout.approvedAt = new Date();
-          if (comment) app.adminComment = comment;
+          if (comment)
+            pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
           // create payment record for dashboard
           try {
             const amount =
@@ -595,7 +697,8 @@ async function bulkReviewOrders(req, res) {
           app.rejectionReason = reason;
           app.needsAppeal = true;
           app.appealFormName = app.appealFormName || "appeal form";
-          if (comment) app.adminComment = comment;
+          if (comment)
+            pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
           // clear any submitted order fields so influencer can re-fill
           try {
             app.orderId = undefined;
@@ -704,7 +807,8 @@ async function submitOrder(req, res) {
       )
         return res.status(400).json({ error: "missing_shipping_address" });
       app.shippingAddress = shippingAddress;
-      if (comment) app.applicantComment = comment;
+      if (comment)
+        pushInfluencerCommentToApp(app, STAGE_ORDER, comment, userId);
       app.status = "order_submitted";
     } else {
       if (!orderId || typeof amount === "undefined")
@@ -714,7 +818,8 @@ async function submitOrder(req, res) {
       if (!app.payout) app.payout = {};
       app.payout.amount = Number(amount);
       app.payout.paid = false;
-      if (comment) app.applicantComment = comment;
+      if (comment)
+        pushInfluencerCommentToApp(app, STAGE_ORDER, comment, userId);
       if (orderData && typeof orderData === "object") app.orderData = orderData;
       app.status = "order_submitted";
     }
@@ -744,7 +849,10 @@ async function listOrders(req, res) {
       .populate("influencer", "name email phone followersCount");
     // filter out applications whose campaign no longer exists (deleted)
     const visible = (items || []).filter((a) => Boolean(a.campaign));
-    res.json(visible);
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    const objs = visible.map((i) => (i && i.toObject ? i.toObject() : i));
+    await attachCommenterNamesToApps(objs, !!isAdmin);
+    res.json(objs);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -779,7 +887,7 @@ async function approveOrder(req, res) {
     // mark as approved for payout processing; payment will be recorded when processed
     app.payout.paid = false;
     app.payout.approvedAt = new Date();
-    if (comment) app.adminComment = comment;
+    if (comment) pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
 
     // create a Payment record for processing by payments dashboard
     try {
@@ -828,7 +936,7 @@ async function rejectOrder(req, res) {
     app.rejectionReason = reason;
     app.needsAppeal = true;
     app.appealFormName = app.appealFormName || "appeal form";
-    if (comment) app.adminComment = comment;
+    if (comment) pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
     try {
       app.orderId = undefined;
       app.orderData = undefined;

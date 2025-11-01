@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function AdminPayments() {
   const [payments, setPayments] = useState([]);
+  const [selectedPayment, setSelectedPayment] = useState(null);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
   const auth = useAuth();
@@ -179,6 +180,15 @@ export default function AdminPayments() {
                           </Button>
                         )
                       )}
+                      <div className="inline-block ml-2">
+                        <Button
+                          onClick={() => setSelectedPayment(p)}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          Details
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -194,6 +204,119 @@ export default function AdminPayments() {
           </div>
         )}
       </div>
+
+      {/* Payment Details Modal */}
+      {selectedPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setSelectedPayment(null)}
+          />
+          <div className="relative bg-gray-800 text-white rounded-xl p-6 max-w-3xl w-full mx-auto shadow-2xl border border-purple-500/50 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-gray-700 pb-3 mb-4">
+              <div>
+                <div className="text-2xl font-extrabold text-cyan-400">
+                  Payment Details
+                </div>
+                <div className="text-sm text-gray-400">
+                  Campaign:{" "}
+                  {selectedPayment.campaign?.brandName ||
+                    selectedPayment.campaign?.title ||
+                    "-"}
+                </div>
+              </div>
+              <Button onClick={() => setSelectedPayment(null)} variant="ghost">
+                Close
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm text-gray-300">
+                <div className="font-semibold text-white">Influencer</div>
+                <div className="text-gray-400">
+                  {selectedPayment.influencer?.name ||
+                    selectedPayment.influencer?.email ||
+                    "-"}
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-300">
+                <div className="font-semibold text-white">Amount</div>
+                <div className="text-white">{selectedPayment.amount || 0}</div>
+              </div>
+
+              <div className="text-sm text-gray-300">
+                <div className="font-semibold text-white">Status</div>
+                <div className="text-white">{selectedPayment.status}</div>
+              </div>
+
+              <div className="text-sm text-gray-300">
+                <div className="font-semibold text-white">Comment History</div>
+                <div className="text-xs text-gray-300 bg-gray-900 p-3 rounded max-h-48 overflow-auto">
+                  {selectedPayment.adminComments &&
+                    selectedPayment.adminComments.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs text-yellow-300 font-semibold mb-1">
+                          Admin comments
+                        </div>
+                        {selectedPayment.adminComments.map((c, i) => (
+                          <div
+                            key={`pac-${i}`}
+                            className="py-1 border-b border-gray-800"
+                          >
+                            <div className="text-xs text-gray-400">
+                              {c.stage} —{" "}
+                              {c.createdAt
+                                ? new Date(c.createdAt).toLocaleString()
+                                : ""}{" "}
+                              {c.by ? `(by ${String(c.by)})` : ""}
+                            </div>
+                            <div className="text-sm text-white">
+                              {c.comment}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                  {selectedPayment.influencerComments &&
+                    selectedPayment.influencerComments.length > 0 && (
+                      <div>
+                        <div className="text-xs text-cyan-300 font-semibold mb-1">
+                          Influencer comments
+                        </div>
+                        {selectedPayment.influencerComments.map((c, i) => (
+                          <div
+                            key={`pic-${i}`}
+                            className="py-1 border-b border-gray-800"
+                          >
+                            <div className="text-xs text-gray-400">
+                              {c.stage} —{" "}
+                              {c.createdAt
+                                ? new Date(c.createdAt).toLocaleString()
+                                : ""}{" "}
+                              {c.by ? `(by ${String(c.by)})` : ""}
+                            </div>
+                            <div className="text-sm text-white italic">
+                              {c.comment}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                  {!selectedPayment.adminComments &&
+                    !selectedPayment.influencerComments && (
+                      <div className="text-sm text-gray-500">
+                        No comments recorded.
+                      </div>
+                    )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

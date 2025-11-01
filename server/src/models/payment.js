@@ -53,6 +53,23 @@ const paymentSchema = new mongoose.Schema(
       verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       verifiedAt: { type: Date },
     },
+    // admin/influencer comment history related to this payment lifecycle
+    adminComments: [
+      {
+        comment: { type: String },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        stage: { type: String },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    influencerComments: [
+      {
+        comment: { type: String },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        stage: { type: String },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

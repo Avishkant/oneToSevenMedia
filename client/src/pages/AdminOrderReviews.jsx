@@ -540,7 +540,9 @@ export default function AdminOrderReviews() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="font-extrabold text-lg text-white">
-                      {g.campaign?.title || "(Unknown Campaign)"}
+                      {g.campaign?.brandName ||
+                        g.campaign?.title ||
+                        "(Unknown Campaign)"}
                     </div>
                     <div className="text-sm text-gray-400">
                       <div>
@@ -746,7 +748,9 @@ export default function AdminOrderReviews() {
                   </div>
                   <div className="text-sm text-gray-400">
                     Campaign:{" "}
-                    {selectedApp.campaign?.title || selectedApp.campaign}
+                    {selectedApp.campaign?.brandName ||
+                      selectedApp.campaign?.title ||
+                      selectedApp.campaign}
                   </div>
                 </div>
                 <Button onClick={() => setSelectedApp(null)} variant="ghost">
@@ -793,13 +797,77 @@ export default function AdminOrderReviews() {
                   {selectedApp.adminComment && (
                     <div className="text-sm text-gray-300">
                       <div className="font-semibold text-white">
-                        Admin Comment:
+                        Admin Comment (current stage):
                       </div>
                       <div className="text-gray-400">
                         {selectedApp.adminComment}
                       </div>
                     </div>
                   )}
+
+                  {(selectedApp.adminComments &&
+                    selectedApp.adminComments.length > 0) ||
+                  (selectedApp.influencerComments &&
+                    selectedApp.influencerComments.length > 0) ? (
+                    <div className="mt-3">
+                      <div className="text-sm font-semibold text-white mb-1">
+                        Full Comment History
+                      </div>
+                      <div className="text-xs text-gray-300 bg-gray-900 p-3 rounded max-h-48 overflow-auto">
+                        {selectedApp.adminComments &&
+                          selectedApp.adminComments.length > 0 && (
+                            <div className="mb-3">
+                              <div className="text-xs text-yellow-300 font-semibold mb-1">
+                                Admin comments
+                              </div>
+                              {selectedApp.adminComments.map((c, i) => (
+                                <div
+                                  key={`ac-${i}`}
+                                  className="py-1 border-b border-gray-800"
+                                >
+                                  <div className="text-xs text-gray-400">
+                                    {c.stage} —{" "}
+                                    {c.createdAt
+                                      ? new Date(c.createdAt).toLocaleString()
+                                      : ""}{" "}
+                                    {c.by ? `(by ${String(c.by)})` : ""}
+                                  </div>
+                                  <div className="text-sm text-white">
+                                    {c.comment}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                        {selectedApp.influencerComments &&
+                          selectedApp.influencerComments.length > 0 && (
+                            <div>
+                              <div className="text-xs text-cyan-300 font-semibold mb-1">
+                                Influencer comments
+                              </div>
+                              {selectedApp.influencerComments.map((c, i) => (
+                                <div
+                                  key={`ic-${i}`}
+                                  className="py-1 border-b border-gray-800"
+                                >
+                                  <div className="text-xs text-gray-400">
+                                    {c.stage} —{" "}
+                                    {c.createdAt
+                                      ? new Date(c.createdAt).toLocaleString()
+                                      : ""}{" "}
+                                    {c.by ? `(by ${String(c.by)})` : ""}
+                                  </div>
+                                  <div className="text-sm text-white italic">
+                                    {c.comment}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="md:col-span-2 pt-4 border-t border-gray-700">

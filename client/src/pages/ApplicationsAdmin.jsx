@@ -5,6 +5,9 @@ import { useAuth } from "../context/AuthContext";
 import ApplicationCard from "../components/ApplicationCard"; // External component
 import Button from "../components/Button";
 import { motion, AnimatePresence } from "framer-motion";
+
+// reference 'motion' to satisfy certain linters (it's used in JSX tags below)
+void motion;
 import {
   FaSearch,
   FaRedo,
@@ -110,7 +113,7 @@ export default function ApplicationsAdmin() {
     return () => {
       mounted = false;
     };
-  }, [auth?.user, auth?.user?.role, auth?.token, toast]);
+  }, [auth?.user, auth?.user?.role, auth?.token, toast, brandName]);
 
   // --- Actions & Helpers ---
   const act = async (id, verb, extra = {}) => {
@@ -468,7 +471,9 @@ export default function ApplicationsAdmin() {
                       )}
                       <div>
                         <div className="font-extrabold text-lg text-white">
-                          {g.campaign?.title || "(Unknown Campaign Title)"}
+                          {g.campaign?.brandName ||
+                            g.campaign?.title ||
+                            "(Unknown Campaign)"}
                         </div>
                         <div className="text-sm text-gray-400">
                           Brand:{" "}
@@ -725,7 +730,7 @@ export default function ApplicationsAdmin() {
 
                           {/* List of Applications (after toolbar) */}
                           <div className="divide-y divide-gray-700">
-                            {filteredApps.map((a, appIndex) => (
+                            {filteredApps.map((a) => (
                               <motion.div
                                 key={a._id}
                                 className="py-3 flex items-start gap-3"
@@ -797,7 +802,9 @@ export default function ApplicationsAdmin() {
                     </div>
                     <div className="text-sm text-gray-400">
                       Campaign:{" "}
-                      {selectedApp.campaign?.title || selectedApp.campaign}
+                      {selectedApp.campaign?.brandName ||
+                        selectedApp.campaign?.title ||
+                        selectedApp.campaign}
                     </div>
                   </div>
                   <Button
@@ -871,7 +878,7 @@ export default function ApplicationsAdmin() {
                     {selectedApp.adminComment && (
                       <div className="text-sm text-gray-300">
                         <div className="font-semibold text-white">
-                          Admin Comment:
+                          Admin Comment (current stage):
                         </div>
                         <div className="text-gray-400">
                           {selectedApp.adminComment}
@@ -886,12 +893,75 @@ export default function ApplicationsAdmin() {
                         </div>
                       </div>
                     )}
-                    {!selectedApp.applicantComment &&
-                      !selectedApp.adminComment && (
-                        <p className="text-sm text-gray-500">
-                          No notes recorded.
-                        </p>
-                      )}
+
+                    {/* Full history lists for admins */}
+                    {(selectedApp.adminComments &&
+                      selectedApp.adminComments.length > 0) ||
+                    (selectedApp.influencerComments &&
+                      selectedApp.influencerComments.length > 0) ? (
+                      <div className="mt-3">
+                        <div className="text-sm font-semibold text-white mb-1">
+                          Full Comment History
+                        </div>
+                        <div className="text-xs text-gray-300 bg-gray-900 p-3 rounded max-h-48 overflow-auto">
+                          {selectedApp.adminComments &&
+                            selectedApp.adminComments.length > 0 && (
+                              <div className="mb-3">
+                                <div className="text-xs text-yellow-300 font-semibold mb-1">
+                                  Admin comments
+                                </div>
+                                {selectedApp.adminComments.map((c, i) => (
+                                  <div
+                                    key={`ac-${i}`}
+                                    className="py-1 border-b border-gray-800"
+                                  >
+                                    <div className="text-xs text-gray-400">
+                                      {c.stage} —{" "}
+                                      {c.createdAt
+                                        ? new Date(c.createdAt).toLocaleString()
+                                        : ""}{" "}
+                                      {c.by ? `(by ${String(c.by)})` : ""}
+                                    </div>
+                                    <div className="text-sm text-white">
+                                      {c.comment}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                          {selectedApp.influencerComments &&
+                            selectedApp.influencerComments.length > 0 && (
+                              <div>
+                                <div className="text-xs text-cyan-300 font-semibold mb-1">
+                                  Influencer comments
+                                </div>
+                                {selectedApp.influencerComments.map((c, i) => (
+                                  <div
+                                    key={`ic-${i}`}
+                                    className="py-1 border-b border-gray-800"
+                                  >
+                                    <div className="text-xs text-gray-400">
+                                      {c.stage} —{" "}
+                                      {c.createdAt
+                                        ? new Date(c.createdAt).toLocaleString()
+                                        : ""}{" "}
+                                      {c.by ? `(by ${String(c.by)})` : ""}
+                                    </div>
+                                    <div className="text-sm text-white italic">
+                                      {c.comment}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No notes recorded.
+                      </p>
+                    )}
                   </div>
 
                   {/* Answers */}

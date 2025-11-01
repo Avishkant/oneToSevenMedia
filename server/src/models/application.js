@@ -68,7 +68,27 @@ const applicationSchema = new mongoose.Schema(
       transactionRef: { type: String },
     },
     rejectionReason: { type: String },
+    // legacy single-field for backward compatibility; updated when new
+    // adminComments entries are added. Prefer using `adminComments`.
     adminComment: { type: String },
+    // history of admin comments across stages (application, order, payment)
+    adminComments: [
+      {
+        stage: { type: String },
+        comment: { type: String },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    // history of influencer comments (applicant notes / order notes / payment notes)
+    influencerComments: [
+      {
+        stage: { type: String },
+        comment: { type: String },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     // When an order is rejected and influencer must re-submit an appeal
     needsAppeal: { type: Boolean, default: false },
     appealFormName: { type: String },

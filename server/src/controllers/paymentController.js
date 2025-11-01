@@ -2,6 +2,54 @@ const Payment = require("../models/payment");
 const Application = require("../models/application");
 const User = require("../models/user");
 
+const STAGE_ORDER = "order";
+const STAGE_PAYMENT = "payment";
+
+function pushAdminCommentToPayment(p, stage, comment, by) {
+  if (!comment) return;
+  p.adminComments = p.adminComments || [];
+  p.adminComments.push({ stage: stage || STAGE_PAYMENT, comment, by });
+}
+
+function pushInfluencerCommentToPayment(p, stage, comment, by) {
+  if (!comment) return;
+  p.influencerComments = p.influencerComments || [];
+  p.influencerComments.push({ stage: stage || STAGE_ORDER, comment, by });
+}
+
+// Attach commenter display names to payment comment objects when includeNames
+// is true. This mirrors the behavior in applicationController.attachCommenterNamesToApps
+// and is used to provide admin UIs with readable author names while keeping
+// influencer-facing responses free of author names.
+async function attachCommenterNamesToPayments(payments, includeNames) {
+  if (!Array.isArray(payments) || payments.length === 0) return payments;
+  const ids = new Set();
+  payments.forEach((p) => {
+    (p.adminComments || []).forEach((c) => c.by && ids.add(String(c.by)));
+    (p.influencerComments || []).forEach((c) => c.by && ids.add(String(c.by)));
+  });
+  if (ids.size === 0) return payments;
+  const idArr = Array.from(ids);
+  const users = await User.find({ _id: { $in: idArr } })
+    .select("name")
+    .lean();
+  const map = {};
+  users.forEach((u) => {
+    if (u && u._id) map[String(u._id)] = u.name || null;
+  });
+  payments.forEach((p) => {
+    (p.adminComments || []).forEach((c) => {
+      const key = String(c.by || "");
+      if (includeNames && map[key]) c.byName = map[key];
+    });
+    (p.influencerComments || []).forEach((c) => {
+      const key = String(c.by || "");
+      if (includeNames && map[key]) c.byName = map[key];
+    });
+  });
+  return payments;
+}
+
 async function listPayments(req, res) {
   try {
     const q = {};
@@ -11,7 +59,11 @@ async function listPayments(req, res) {
       .populate("influencer", "name email")
       .populate("campaign", "title brandName")
       .populate("application", "status payout");
-    res.json(items);
+    // Attach commenter names for admin viewers
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    const objs = (items || []).map((i) => (i && i.toObject ? i.toObject() : i));
+    if (isAdmin) await attachCommenterNamesToPayments(objs, true);
+    res.json(objs);
   } catch (err) {
     console.error("listPayments error", err);
     res.status(500).json({ error: "server_error" });
@@ -50,7 +102,11 @@ async function updatePayment(req, res) {
       }
     }
 
-    res.json(p);
+    // attach commenter names when admin is calling
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    const out = p && p.toObject ? p.toObject() : p;
+    if (isAdmin) await attachCommenterNamesToPayments([out], true);
+    res.json(out);
   } catch (err) {
     console.error("updatePayment error", err);
     res.status(500).json({ error: "server_error" });
@@ -64,21 +120,43 @@ async function listMyPayments(req, res) {
     const items = await Payment.find({ influencer: userId })
       .populate("campaign", "title brandName")
       .populate("application", "status payout");
-    res.json(items);
+    // For influencer views, only expose admin comment relevant to the
+    // payment stage (admins get the full adminComments history from
+    // the admin-facing endpoints).
+    const out = (items || []).map((p) => {
+      const obj = p && p.toObject ? p.toObject() : p;
+      const adminComments = obj.adminComments || [];
+      const recent = [...adminComments]
+        .reverse()
+        .find((c) => c.stage === STAGE_PAYMENT);
+      obj.adminComment = recent ? recent.comment : obj.adminComment || null;
+      obj.influencerComments = obj.influencerComments || [];
+      return obj;
+    });
+    res.json(out);
   } catch (err) {
     console.error("listMyPayments error", err);
     res.status(500).json({ error: "server_error" });
   }
 }
 
-module.exports = { listPayments, updatePayment, listMyPayments };
+module.exports = {
+  listPayments,
+  updatePayment,
+  listMyPayments,
+  submitOrderProof,
+  submitDeliverables,
+  approvePartial,
+  approveRemaining,
+};
 
 // --- New handlers for refund_on_delivery flow ---
 
 async function submitOrderProof(req, res) {
   const id = req.params.id;
   const userId = req.user && req.user.id;
-  const { orderScreenshot, deliveredScreenshot, orderAmount } = req.body || {};
+  const { orderScreenshot, deliveredScreenshot, orderAmount, comment } =
+    req.body || {};
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
@@ -92,6 +170,34 @@ async function submitOrderProof(req, res) {
     if (typeof orderAmount !== "undefined")
       p.orderProofs.orderAmount = Number(orderAmount);
     p.orderProofs.submittedAt = new Date();
+    if (comment) {
+      pushInfluencerCommentToPayment(p, STAGE_ORDER, comment, userId);
+      // also record on application-level influencerComments for history
+      try {
+        if (p.application) {
+          const app = await Application.findById(p.application);
+          if (app) {
+            app.influencerComments = app.influencerComments || [];
+            app.influencerComments.push({
+              stage: STAGE_ORDER,
+              comment,
+              by: userId,
+              createdAt: new Date(),
+            });
+            // keep legacy field in sync
+            app.applicantComment = comment;
+          }
+          await app.save();
+        }
+      } catch (e) {
+        // ignore app comment failure
+        // eslint-disable-next-line no-console
+        console.warn(
+          "submitOrderProof: failed to save app influencer comment",
+          e && e.message
+        );
+      }
+    }
     // mark as pending proof
     p.status = p.status === "pending" ? "proof_submitted" : p.status;
     // reflect on application status as 'order_submitted' (already set by app)
@@ -120,7 +226,7 @@ async function submitOrderProof(req, res) {
 async function submitDeliverables(req, res) {
   const id = req.params.id;
   const userId = req.user && req.user.id;
-  const { proof } = req.body || {};
+  const { proof, comment } = req.body || {};
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
@@ -130,6 +236,32 @@ async function submitDeliverables(req, res) {
     p.deliverablesProof = p.deliverablesProof || {};
     if (proof) p.deliverablesProof.proof = proof;
     p.deliverablesProof.submittedAt = new Date();
+    if (comment) {
+      pushInfluencerCommentToPayment(p, STAGE_PAYMENT, comment, userId);
+      try {
+        if (p.application) {
+          const app = await Application.findById(p.application);
+          if (app) {
+            app.influencerComments = app.influencerComments || [];
+            app.influencerComments.push({
+              stage: STAGE_PAYMENT,
+              comment,
+              by: userId,
+              createdAt: new Date(),
+            });
+            app.applicantComment = comment;
+          }
+          await app.save();
+        }
+      } catch (e) {
+        // ignore
+        // eslint-disable-next-line no-console
+        console.warn(
+          "submitDeliverables: failed to save app influencer comment",
+          e && e.message
+        );
+      }
+    }
     // mark as deliverables submitted
     p.status =
       p.status === "partial_approved" || p.status === "proof_submitted"
@@ -146,7 +278,7 @@ async function submitDeliverables(req, res) {
 async function approvePartial(req, res) {
   const id = req.params.id;
   const reviewerId = req.user && req.user.id;
-  const { amount, payNow } = req.body || {};
+  const { amount, payNow, comment } = req.body || {};
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
@@ -161,6 +293,32 @@ async function approvePartial(req, res) {
       typeof amount === "number" ? amount : p.partialApproval.amount || 0;
     p.partialApproval.approvedBy = reviewerId;
     p.partialApproval.approvedAt = new Date();
+    if (comment) {
+      pushAdminCommentToPayment(p, STAGE_PAYMENT, comment, reviewerId);
+      try {
+        if (p.application) {
+          const app = await Application.findById(p.application);
+          if (app) {
+            app.adminComments = app.adminComments || [];
+            app.adminComments.push({
+              stage: STAGE_PAYMENT,
+              comment,
+              by: reviewerId,
+              createdAt: new Date(),
+            });
+            app.adminComment = comment;
+          }
+          await app.save();
+        }
+      } catch (e) {
+        // ignore
+        // eslint-disable-next-line no-console
+        console.warn(
+          "approvePartial: failed to save app admin comment",
+          e && e.message
+        );
+      }
+    }
     if (payNow) {
       p.partialApproval.paid = true;
       p.partialApproval.paidAt = new Date();
@@ -201,7 +359,11 @@ async function approvePartial(req, res) {
       );
     }
     await p.save();
-    res.json(p);
+    // attach commenter names for admin response
+    const out = p && p.toObject ? p.toObject() : p;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToPayments([out], true);
+    res.json(out);
   } catch (err) {
     console.error("approvePartial error", err);
     res.status(500).json({ error: "server_error" });
@@ -214,6 +376,7 @@ async function approveRemaining(req, res) {
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
+    const { comment } = req.body || {};
     // require deliverables proof verified or present
     if (!p.deliverablesProof || !p.deliverablesProof.proof) {
       return res.status(400).json({ error: "deliverables_missing" });
@@ -222,6 +385,33 @@ async function approveRemaining(req, res) {
     p.deliverablesProof.verified = true;
     p.deliverablesProof.verifiedBy = reviewerId;
     p.deliverablesProof.verifiedAt = new Date();
+
+    if (comment) {
+      pushAdminCommentToPayment(p, STAGE_PAYMENT, comment, reviewerId);
+      try {
+        if (p.application) {
+          const app = await Application.findById(p.application);
+          if (app) {
+            app.adminComments = app.adminComments || [];
+            app.adminComments.push({
+              stage: STAGE_PAYMENT,
+              comment,
+              by: reviewerId,
+              createdAt: new Date(),
+            });
+            app.adminComment = comment;
+          }
+          await app.save();
+        }
+      } catch (e) {
+        // ignore
+        // eslint-disable-next-line no-console
+        console.warn(
+          "approveRemaining: failed to save app admin comment",
+          e && e.message
+        );
+      }
+    }
 
     // mark remaining paid
     p.status = "paid";
@@ -255,7 +445,11 @@ async function approveRemaining(req, res) {
     }
 
     await p.save();
-    res.json(p);
+    // attach commenter names for admin response
+    const out = p && p.toObject ? p.toObject() : p;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToPayments([out], true);
+    res.json(out);
   } catch (err) {
     console.error("approveRemaining error", err);
     res.status(500).json({ error: "server_error" });
