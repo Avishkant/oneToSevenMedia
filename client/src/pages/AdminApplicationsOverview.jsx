@@ -14,6 +14,20 @@ function CampaignGroupCard({ campaign, apps, count, onAction }) {
   const brandLogo = campaign?.brandLogo || campaign?.image || null;
   const subtitle = campaign?.title || campaign?.category || "";
 
+  const formatPayoutRelease = (val) => {
+    if (!val) return "";
+    switch (String(val)) {
+      case "refund_on_delivery":
+        return "Refund on delivery; remaining after deliverables";
+      case "pay_after_deliverables":
+        return "Pay order + deliverables after deliverables performed";
+      case "advance_then_remaining":
+        return "Pay order in advance; remaining after deliverables";
+      default:
+        return String(val);
+    }
+  };
+
   return (
     <div>
       <div
@@ -43,6 +57,16 @@ function CampaignGroupCard({ campaign, apps, count, onAction }) {
             </div>
             {subtitle && (
               <div className="text-sm text-slate-400">{subtitle}</div>
+            )}
+            {campaign?.adminComment && (
+              <div className="text-xs text-yellow-300 mt-1">
+                Admin note: {campaign.adminComment}
+              </div>
+            )}
+            {campaign?.payoutRelease && (
+              <div className="text-xs text-slate-300 mt-1">
+                Payout: {formatPayoutRelease(campaign.payoutRelease)}
+              </div>
             )}
           </div>
         </div>

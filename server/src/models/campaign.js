@@ -33,6 +33,20 @@ const campaignSchema = new mongoose.Schema(
       enum: ["partial", "on_place", "on_completion", "full"],
       default: "full",
     },
+    // payoutRelease controls WHEN the payout(s) are released to the influencer.
+    // Options (examples):
+    // - 'refund_on_delivery': order amount is refunded as order delivers and any remaining amount paid after all deliverables performed
+    // - 'pay_after_deliverables': order amount + deliverables amount paid after deliverables performed
+    // - 'advance_then_remaining': order amount paid in advance before order and remaining paid after deliverables performed
+    payoutRelease: {
+      type: String,
+      enum: [
+        "refund_on_delivery",
+        "pay_after_deliverables",
+        "advance_then_remaining",
+      ],
+      default: "pay_after_deliverables",
+    },
     // Optional visible note for creators (public message/instructions)
     influencerComment: { type: String },
     // Internal admin-only note (not returned to influencers via UI)

@@ -19,6 +19,7 @@ export default function CreateCampaign() {
   const [orderFormFields, setOrderFormFields] = useState("");
   const [influencerComment, setInfluencerComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
+  const [payoutRelease, setPayoutRelease] = useState("pay_after_deliverables");
   const [saving, setSaving] = useState(false);
 
   const auth = useAuth();
@@ -54,6 +55,7 @@ export default function CreateCampaign() {
         isPublic: !!isPublic,
         influencerComment: influencerComment || undefined,
         adminComment: adminComment || undefined,
+        payoutRelease: payoutRelease || undefined,
       };
 
       const res = await fetch("/api/campaigns", {
@@ -208,6 +210,23 @@ export default function CreateCampaign() {
               placeholder="e.g. orderId,amount,size"
               className="px-3 py-2 rounded bg-white/3"
             />
+
+            <label className="text-sm">Payout release timing</label>
+            <select
+              value={payoutRelease}
+              onChange={(e) => setPayoutRelease(e.target.value)}
+              className="px-3 py-2 rounded bg-white/3"
+            >
+              <option value="refund_on_delivery">
+                Refund on delivery, remaining after deliverables
+              </option>
+              <option value="pay_after_deliverables">
+                Pay order + deliverables after deliverables performed
+              </option>
+              <option value="advance_then_remaining">
+                Pay order in advance, remaining paid after deliverables
+              </option>
+            </select>
           </div>
           <div>
             <Button type="submit" disabled={saving} variant="primary">

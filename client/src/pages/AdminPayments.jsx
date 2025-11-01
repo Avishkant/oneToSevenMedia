@@ -74,6 +74,7 @@ export default function AdminPayments() {
                   <th>Influencer</th>
                   <th>Amount</th>
                   <th>Type</th>
+                  <th>Payout Release</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
@@ -87,6 +88,9 @@ export default function AdminPayments() {
                     <td>{p.influencer?.name || p.influencer?.email || "-"}</td>
                     <td>{p.amount || 0}</td>
                     <td>{p.paymentType || "full"}</td>
+                    <td className="text-sm text-slate-300">
+                      {p.payoutRelease || p.campaign?.payoutRelease || "-"}
+                    </td>
                     <td>{p.status}</td>
                     <td className="text-right">
                       {p.status !== "paid" && (

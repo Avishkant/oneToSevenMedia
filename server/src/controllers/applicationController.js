@@ -93,6 +93,7 @@ async function approveApplication(req, res) {
         if (campaign.orderFormFields)
           app.orderFormFields = campaign.orderFormFields;
         if (campaign.paymentType) app.paymentType = campaign.paymentType;
+        if (campaign.payoutRelease) app.payoutRelease = campaign.payoutRelease;
       }
     } catch (e) {
       // don't fail approval if snapshotting fails
@@ -410,6 +411,8 @@ async function bulkReviewApplications(req, res) {
               if (campaign.orderFormFields)
                 app.orderFormFields = campaign.orderFormFields;
               if (campaign.paymentType) app.paymentType = campaign.paymentType;
+              if (campaign.payoutRelease)
+                app.payoutRelease = campaign.payoutRelease;
             }
           } catch (e) {
             // eslint-disable-next-line no-console
@@ -544,6 +547,8 @@ async function bulkReviewOrders(req, res) {
                 app.fulfillmentMethod = campaignSnap.fulfillmentMethod;
               if (campaignSnap.orderFormFields)
                 app.orderFormFields = campaignSnap.orderFormFields;
+              if (campaignSnap.payoutRelease)
+                app.payoutRelease = campaignSnap.payoutRelease;
             }
           } catch (e) {
             // don't fail the whole import for snapshot errors
@@ -757,6 +762,7 @@ async function approveOrder(req, res) {
         if (campaign.orderFormFields)
           app.orderFormFields = campaign.orderFormFields;
         if (campaign.paymentType) app.paymentType = campaign.paymentType;
+        if (campaign.payoutRelease) app.payoutRelease = campaign.payoutRelease;
       }
     } catch (e) {
       console.warn("approveOrder: failed to snapshot campaign", e && e.message);
@@ -783,6 +789,7 @@ async function approveOrder(req, res) {
         amount,
         totalPayout: amount,
         paymentType: app.paymentType || "full",
+        payoutRelease: app.payoutRelease || undefined,
         status: "pending",
       });
     } catch (e) {

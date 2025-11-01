@@ -259,6 +259,12 @@ async function bulkCreateCampaigns(req, res) {
           undefined,
         adminComment:
           r.adminComment || r.AdminComment || r.admin_comment || undefined,
+        payoutRelease:
+          r.payoutRelease ||
+          r.PayoutRelease ||
+          r.payout_release ||
+          r.payout ||
+          undefined,
       };
       cleaned.push({ index: i + 1, doc });
     }

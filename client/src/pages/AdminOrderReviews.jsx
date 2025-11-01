@@ -60,6 +60,20 @@ export default function AdminOrderReviews() {
     return res;
   };
 
+  const formatPayoutRelease = (val) => {
+    if (!val) return "";
+    switch (String(val)) {
+      case "refund_on_delivery":
+        return "Refund on delivery; remaining after deliverables";
+      case "pay_after_deliverables":
+        return "Pay order + deliverables after deliverables performed";
+      case "advance_then_remaining":
+        return "Pay order in advance; remaining after deliverables";
+      default:
+        return String(val);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -528,10 +542,23 @@ export default function AdminOrderReviews() {
                       {g.campaign?.title || "(Unknown Campaign)"}
                     </div>
                     <div className="text-sm text-gray-400">
-                      Brand:{" "}
-                      <span className="font-medium text-cyan-400">
-                        {g.campaign?.brandName || "-"}
-                      </span>
+                      <div>
+                        Brand:{" "}
+                        <span className="font-medium text-cyan-400">
+                          {g.campaign?.brandName || "-"}
+                        </span>
+                      </div>
+                      {g.campaign?.adminComment && (
+                        <div className="text-xs text-yellow-300 mt-1">
+                          Admin note: {g.campaign.adminComment}
+                        </div>
+                      )}
+                      {g.campaign?.payoutRelease && (
+                        <div className="text-xs text-slate-300 mt-1">
+                          Payout:{" "}
+                          {formatPayoutRelease(g.campaign.payoutRelease)}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="text-sm text-gray-400">

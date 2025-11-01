@@ -54,6 +54,8 @@ const applicationSchema = new mongoose.Schema(
     orderFormFields: [{ type: String }],
     // flexible object to store arbitrary order-related fields (per-campaign)
     orderData: { type: Object },
+    // snapshot of campaign payout release timing (e.g., refund_on_delivery)
+    payoutRelease: { type: String },
     payout: {
       amount: { type: Number },
       paid: { type: Boolean, default: false },

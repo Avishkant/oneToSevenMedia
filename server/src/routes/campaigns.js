@@ -40,6 +40,8 @@ router.post(
         "influencerComment",
         "adminComment",
         "paymentType",
+        // payout release timing
+        "payoutRelease",
       ];
       const doc = {};
       allowedCreate.forEach((k) => {
@@ -115,6 +117,8 @@ router.patch(
         // allow setting comments visible to creators or admins
         "influencerComment",
         "adminComment",
+        // payout release timing
+        "payoutRelease",
       ];
       const patch = {};
       allowed.forEach((k) => {

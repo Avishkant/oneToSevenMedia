@@ -56,6 +56,7 @@ export default function CampaignEdit() {
         fulfillmentMethod: campaign.fulfillmentMethod || undefined,
         influencerComment: campaign.influencerComment || undefined,
         adminComment: campaign.adminComment || undefined,
+        payoutRelease: campaign.payoutRelease || undefined,
         orderFormFields: Array.isArray(campaign.orderFormFields)
           ? campaign.orderFormFields
           : campaign.orderFormFields
@@ -199,6 +200,24 @@ export default function CampaignEdit() {
             placeholder="e.g. orderId,amount,size"
             className="px-3 py-2 rounded bg-white/3"
           />
+          <label className="text-sm">Payout release timing</label>
+          <select
+            value={campaign.payoutRelease || "pay_after_deliverables"}
+            onChange={(e) =>
+              setCampaign({ ...campaign, payoutRelease: e.target.value })
+            }
+            className="px-3 py-2 rounded bg-white/3"
+          >
+            <option value="refund_on_delivery">
+              Refund on delivery, remaining after deliverables
+            </option>
+            <option value="pay_after_deliverables">
+              Pay order + deliverables after deliverables performed
+            </option>
+            <option value="advance_then_remaining">
+              Pay order in advance, remaining paid after deliverables
+            </option>
+          </select>
           <label className="text-sm">
             Public note for creators (influencer-facing)
           </label>
