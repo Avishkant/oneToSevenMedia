@@ -181,69 +181,7 @@ export default function CampaignsList() {
             })}
           </motion.ul>
 
-          {/* Delete confirmation modal */}
-          {deleteState.open && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div
-                className="absolute inset-0 bg-black/50"
-                onClick={() =>
-                  setDeleteState({ open: false, id: null, brand: "" })
-                }
-              />
-              <div className="relative bg-slate-900 text-slate-100 rounded p-6 max-w-md w-full mx-4">
-                <div className="text-lg font-semibold">Delete campaign</div>
-                <div className="mt-3 text-sm text-slate-300">
-                  Are you sure you want to delete{" "}
-                  <span className="font-semibold">{deleteState.brand}</span>?
-                  This will also remove all related applications and cannot be
-                  undone.
-                </div>
-                <div className="mt-4 flex gap-2 justify-end">
-                  <Button
-                    onClick={() =>
-                      setDeleteState({ open: false, id: null, brand: "" })
-                    }
-                    variant="primary"
-                    className="bg-slate-600"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const token =
-                          auth?.token || localStorage.getItem("accessToken");
-                        const res = await fetch(
-                          `/api/campaigns/${deleteState.id}`,
-                          {
-                            method: "DELETE",
-                            headers: token
-                              ? { Authorization: `Bearer ${token}` }
-                              : undefined,
-                          }
-                        );
-                        if (!res.ok) throw new Error("Delete failed");
-                        // remove from local list
-                        setItems((s) =>
-                          s.filter((i) => i._id !== deleteState.id)
-                        );
-                        toast?.add("Campaign deleted", { type: "success" });
-                        setDeleteState({ open: false, id: null, brand: "" });
-                      } catch (err) {
-                        toast?.add(err.message || "Delete failed", {
-                          type: "error",
-                        });
-                      }
-                    }}
-                    variant="danger"
-                    className="bg-rose-500"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Delete confirmation modal is rendered at page root (moved below) */}
 
           <div className="mt-4 flex items-center justify-between">
             <div className="text-sm text-slate-300">
@@ -267,6 +205,71 @@ export default function CampaignsList() {
             </div>
           </div>
         </div>
+
+        {/* Move the modal here so it's outside any transformed/animated containers
+            (framer-motion can create a stacking context that confines fixed elements).
+            Rendering the modal as a direct child of the page container ensures the
+            fixed positioning centers correctly in the viewport regardless of scroll. */}
+        {deleteState.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() =>
+                setDeleteState({ open: false, id: null, brand: "" })
+              }
+            />
+            <div className="relative bg-slate-900 text-slate-100 rounded p-6 max-w-md w-full mx-4">
+              <div className="text-lg font-semibold">Delete campaign</div>
+              <div className="mt-3 text-sm text-slate-300">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">{deleteState.brand}</span>? This
+                will also remove all related applications and cannot be undone.
+              </div>
+              <div className="mt-4 flex gap-2 justify-end">
+                <Button
+                  onClick={() =>
+                    setDeleteState({ open: false, id: null, brand: "" })
+                  }
+                  variant="primary"
+                  className="bg-slate-600"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const token =
+                        auth?.token || localStorage.getItem("accessToken");
+                      const res = await fetch(
+                        `/api/campaigns/${deleteState.id}`,
+                        {
+                          method: "DELETE",
+                          headers: token
+                            ? { Authorization: `Bearer ${token}` }
+                            : undefined,
+                        }
+                      );
+                      if (!res.ok) throw new Error("Delete failed");
+                      setItems((s) =>
+                        s.filter((i) => i._id !== deleteState.id)
+                      );
+                      toast?.add("Campaign deleted", { type: "success" });
+                      setDeleteState({ open: false, id: null, brand: "" });
+                    } catch (err) {
+                      toast?.add(err.message || "Delete failed", {
+                        type: "error",
+                      });
+                    }
+                  }}
+                  variant="danger"
+                  className="bg-rose-500"
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

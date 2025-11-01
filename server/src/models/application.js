@@ -25,6 +25,10 @@ const applicationSchema = new mongoose.Schema(
         "approved",
         "rejected",
         "order_submitted",
+        // order-level review states
+        "order_form_approved",
+        "order_form_rejected",
+        // final/completed state after fulfillment and payout
         "completed",
       ],
       default: "applied",

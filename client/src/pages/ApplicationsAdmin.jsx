@@ -189,6 +189,7 @@ export default function ApplicationsAdmin() {
           s !== "approved" &&
           s !== "rejected" &&
           s !== "order_submitted" &&
+          s !== "order_form_approved" &&
           s !== "completed"
         );
       });

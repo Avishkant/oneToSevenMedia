@@ -107,6 +107,37 @@ export default function StatusBadge({ status }) {
       icon: "check",
     },
     rejected: { text: "Rejected", cls: "bg-rose-600 text-white", icon: "x" },
+    order_submitted: {
+      text: "Order Submitted",
+      cls: "bg-indigo-600 text-white",
+      icon: "cart",
+    },
+    order_form_approved: {
+      text: "Order Approved",
+      cls: "bg-emerald-600 text-white",
+      icon: "check",
+    },
+    order_form_rejected: {
+      text: "Order Rejected",
+      cls: "bg-rose-600 text-white",
+      icon: "x",
+    },
+    proof_submitted: {
+      text: "Proof Submitted",
+      cls: "bg-indigo-500 text-white",
+      icon: "clock",
+    },
+    deliverables_submitted: {
+      text: "Deliverables Submitted",
+      cls: "bg-indigo-500 text-white",
+      icon: "clock",
+    },
+    partial_approved: {
+      text: "Partial Approved",
+      cls: "bg-amber-500 text-white",
+      icon: "check",
+    },
+    paid: { text: "Paid", cls: "bg-emerald-600 text-white", icon: "check" },
     ordered: { text: "Ordered", cls: "bg-indigo-600 text-white", icon: "cart" },
     submitted: {
       text: "Submitted",

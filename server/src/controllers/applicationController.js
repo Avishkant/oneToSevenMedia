@@ -731,7 +731,16 @@ async function listOrders(req, res) {
     // include order-related statuses so admin can still see records after
     // approval or rejection while the campaign exists
     const q = {
-      status: { $in: ["order_submitted", "approved", "rejected", "completed"] },
+      status: {
+        $in: [
+          "order_submitted",
+          "order_form_approved",
+          "order_form_rejected",
+          "approved",
+          "rejected",
+          "completed",
+        ],
+      },
     };
     if (req.query && req.query.campaignId) q.campaign = req.query.campaignId;
     const items = await Application.find(q)
@@ -768,7 +777,7 @@ async function approveOrder(req, res) {
       console.warn("approveOrder: failed to snapshot campaign", e && e.message);
     }
 
-    app.status = "completed";
+    app.status = "order_form_approved";
     app.reviewer = reviewerId;
     if (!app.payout) app.payout = {};
     // mark as approved for payout processing; payment will be recorded when processed
@@ -815,7 +824,10 @@ async function rejectOrder(req, res) {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
     // mark as rejected and require influencer to resubmit an appeal
-    app.status = "rejected";
+    // If the application was in an order-submitted state, treat this as an
+    // order-form rejection; otherwise treat as full application rejection.
+    if (app.status === "order_submitted") app.status = "order_form_rejected";
+    else app.status = "rejected";
     app.reviewer = reviewerId;
     app.rejectionReason = reason;
     app.needsAppeal = true;

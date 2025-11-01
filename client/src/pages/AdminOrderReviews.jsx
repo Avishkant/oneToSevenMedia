@@ -117,6 +117,7 @@ export default function AdminOrderReviews() {
           s !== "approved" &&
           s !== "rejected" &&
           s !== "order_submitted" &&
+          s !== "order_form_approved" &&
           s !== "completed"
         );
       });

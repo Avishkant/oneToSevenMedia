@@ -18,7 +18,19 @@ const paymentSchema = new mongoose.Schema(
     paymentType: { type: String }, // e.g., partial, on_place, on_completion, full
     // snapshot of campaign payout release timing (for dashboard/processing)
     payoutRelease: { type: String },
-    status: { type: String, default: "pending" }, // pending/paid/failed
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "proof_submitted",
+        "proof_rejected",
+        "deliverables_submitted",
+        "partial_approved",
+        "paid",
+        "failed",
+      ],
+      default: "pending",
+    },
     metadata: { type: Object },
     // proofs and partial payout bookkeeping for refund_on_delivery flow
     orderProofs: {

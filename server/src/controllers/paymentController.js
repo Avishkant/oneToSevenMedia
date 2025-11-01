@@ -94,6 +94,21 @@ async function submitOrderProof(req, res) {
     p.orderProofs.submittedAt = new Date();
     // mark as pending proof
     p.status = p.status === "pending" ? "proof_submitted" : p.status;
+    // reflect on application status as 'order_submitted' (already set by app)
+    try {
+      if (p.application) {
+        const app = await Application.findById(p.application);
+        if (app && app.status !== "order_submitted") {
+          app.status = "order_submitted";
+          await app.save();
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "submitOrderProof: failed to update application status",
+        err && err.message
+      );
+    }
     await p.save();
     res.json(p);
   } catch (err) {
@@ -170,6 +185,21 @@ async function approvePartial(req, res) {
       p.partialApproval.paid = false;
     }
     p.status = "partial_approved";
+    // if payment was executed immediately, reflect on application status
+    try {
+      if (payNow && p.application) {
+        const app = await Application.findById(p.application);
+        if (app) {
+          app.status = "partial_payment_processed";
+          await app.save();
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "approvePartial: failed to update application status",
+        err && err.message
+      );
+    }
     await p.save();
     res.json(p);
   } catch (err) {
@@ -212,6 +242,8 @@ async function approveRemaining(req, res) {
           if (!app.payout) app.payout = {};
           app.payout.paid = true;
           app.payout.paidAt = new Date();
+          // mark application as fully paid
+          app.status = "full_payment_processed";
           await app.save();
         }
       }

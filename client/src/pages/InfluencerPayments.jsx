@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Button from "../components/Button";
+import Modal from "../components/Modal";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
 
@@ -39,7 +40,6 @@ export default function InfluencerPayments() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const openForm = (id, type) => setModal({ id, type });
   const closeForm = () => setModal(null);
 
@@ -225,22 +225,6 @@ export default function InfluencerPayments() {
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function Modal({ children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-gray-900 rounded p-4 max-w-lg w-full z-10 shadow-lg">
-        <div className="flex justify-end mb-2">
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            ✕
-          </button>
-        </div>
-        <div>{children}</div>
       </div>
     </div>
   );
