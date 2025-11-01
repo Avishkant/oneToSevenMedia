@@ -20,6 +20,27 @@ const paymentSchema = new mongoose.Schema(
     payoutRelease: { type: String },
     status: { type: String, default: "pending" }, // pending/paid/failed
     metadata: { type: Object },
+    // proofs and partial payout bookkeeping for refund_on_delivery flow
+    orderProofs: {
+      orderScreenshot: { type: String },
+      deliveredScreenshot: { type: String },
+      orderAmount: { type: Number },
+      submittedAt: { type: Date },
+    },
+    partialApproval: {
+      amount: { type: Number },
+      approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      approvedAt: { type: Date },
+      paid: { type: Boolean, default: false },
+      paidAt: { type: Date },
+    },
+    deliverablesProof: {
+      proof: { type: String },
+      submittedAt: { type: Date },
+      verified: { type: Boolean, default: false },
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      verifiedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

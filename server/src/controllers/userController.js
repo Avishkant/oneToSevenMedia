@@ -49,6 +49,11 @@ async function updateMe(req, res) {
       "dob",
       "employmentStatus",
       "profession",
+      // bank/payment fields (allow influencers to update their payout details)
+      "bankAccountName",
+      "bankAccountNumber",
+      "bankName",
+      "bankIFSC",
     ];
     const patch = {};
     allowed.forEach((k) => {

@@ -53,6 +53,46 @@ export default function AdminPayments() {
     }
   };
 
+  const approvePartial = async (id) => {
+    const raw = window.prompt("Enter partial amount to approve (numeric)");
+    if (raw === null) return;
+    const amount = Number(raw);
+    if (Number.isNaN(amount))
+      return toast?.add("Invalid amount", { type: "error" });
+    const payNow = window.confirm("Mark this partial payout as paid now?");
+    try {
+      const res = await fetchWithAuth(`/api/payments/${id}/approve-partial`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, payNow }),
+      });
+      if (!res.ok) throw new Error("Approve partial failed");
+      toast?.add("Partial approved", { type: "success" });
+      await load();
+    } catch (err) {
+      toast?.add(err.message || "Action failed", { type: "error" });
+    }
+  };
+
+  const approveRemaining = async (id) => {
+    if (!window.confirm("Verify deliverables and release remaining payout?"))
+      return;
+    try {
+      const res = await fetchWithAuth(`/api/payments/${id}/approve-remaining`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || "Approve remaining failed");
+      }
+      toast?.add("Remaining payout released", { type: "success" });
+      await load();
+    } catch (err) {
+      toast?.add(err.message || "Action failed", { type: "error" });
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between mb-4">
@@ -93,14 +133,51 @@ export default function AdminPayments() {
                     </td>
                     <td>{p.status}</td>
                     <td className="text-right">
-                      {p.status !== "paid" && (
-                        <Button
-                          onClick={() => markPaid(p._id)}
-                          variant="success"
-                          size="sm"
-                        >
-                          Mark Paid
-                        </Button>
+                      {p.payoutRelease === "refund_on_delivery" ? (
+                        <div className="flex gap-2 justify-end">
+                          {/* show order proofs if available */}
+                          {p.orderProofs && p.orderProofs.submittedAt && (
+                            <div className="text-xs text-slate-300 mr-2">
+                              Order proof:{" "}
+                              {new Date(
+                                p.orderProofs.submittedAt
+                              ).toLocaleString()}
+                            </div>
+                          )}
+                          {!p.partialApproval || !p.partialApproval.amount ? (
+                            <Button
+                              onClick={() => approvePartial(p._id)}
+                              size="sm"
+                            >
+                              Approve Partial
+                            </Button>
+                          ) : (
+                            <div className="text-xs text-slate-200 mr-2">
+                              Partial: {p.partialApproval.amount}{" "}
+                              {p.partialApproval.paid ? "(paid)" : "(approved)"}
+                            </div>
+                          )}
+                          {p.deliverablesProof &&
+                          p.deliverablesProof.submittedAt ? (
+                            <Button
+                              onClick={() => approveRemaining(p._id)}
+                              size="sm"
+                              variant="success"
+                            >
+                              Release Remaining
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        p.status !== "paid" && (
+                          <Button
+                            onClick={() => markPaid(p._id)}
+                            variant="success"
+                            size="sm"
+                          >
+                            Mark Paid
+                          </Button>
+                        )
                       )}
                     </td>
                   </tr>
