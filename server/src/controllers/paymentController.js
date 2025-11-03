@@ -104,12 +104,10 @@ async function updatePayment(req, res) {
       if (status === "paid") {
         // disallow marking paid unless deliverables proof exists
         if (!p.deliverablesProof || !p.deliverablesProof.submittedAt) {
-          return res
-            .status(400)
-            .json({
-              error: "deliverables_missing",
-              message: "Cannot mark paid before deliverables are submitted",
-            });
+          return res.status(400).json({
+            error: "deliverables_missing",
+            message: "Cannot mark paid before deliverables are submitted",
+          });
         }
       }
       p.status = status;
@@ -227,6 +225,23 @@ async function submitOrderProof(req, res) {
     comment,
   } = req.body || {};
   try {
+    // verify user has bank details on file
+    const usr = await User.findById(userId).select(
+      "bankAccountNumber bankAccountName bankName"
+    );
+    if (
+      !usr ||
+      !usr.bankAccountNumber ||
+      !usr.bankAccountName ||
+      !usr.bankName
+    ) {
+      return res.status(400).json({
+        error: "bank_details_missing",
+        message:
+          "Please add bank details in your profile before submitting order proof",
+      });
+    }
+
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
     if (String(p.influencer) !== String(userId))
@@ -234,12 +249,10 @@ async function submitOrderProof(req, res) {
 
     // Validate required fields: orderAmount (Request Amount) and orderScreenshot
     if (typeof orderAmount === "undefined" || !orderScreenshot) {
-      return res
-        .status(400)
-        .json({
-          error: "missing_required_fields",
-          message: "orderAmount and orderScreenshot are required",
-        });
+      return res.status(400).json({
+        error: "missing_required_fields",
+        message: "orderAmount and orderScreenshot are required",
+      });
     }
 
     p.orderProofs = p.orderProofs || {};
@@ -347,18 +360,33 @@ async function submitDeliverables(req, res) {
     storyScreenshots,
   } = req.body || {};
   try {
+    // verify user has bank details on file
+    const usr = await User.findById(userId).select(
+      "bankAccountNumber bankAccountName bankName"
+    );
+    if (
+      !usr ||
+      !usr.bankAccountNumber ||
+      !usr.bankAccountName ||
+      !usr.bankName
+    ) {
+      return res.status(400).json({
+        error: "bank_details_missing",
+        message:
+          "Please add bank details in your profile before submitting deliverables",
+      });
+    }
+
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
     if (String(p.influencer) !== String(userId))
       return res.status(403).json({ error: "forbidden" });
     // Require a proof URL and basic info
     if (!proof) {
-      return res
-        .status(400)
-        .json({
-          error: "missing_required_fields",
-          message: "deliverables proof is required",
-        });
+      return res.status(400).json({
+        error: "missing_required_fields",
+        message: "deliverables proof is required",
+      });
     }
 
     p.deliverablesProof = p.deliverablesProof || {};
@@ -445,12 +473,10 @@ async function approvePartial(req, res) {
     }
     // require influencer to have submitted order proof before admin approves
     if (!p.orderProofs || !p.orderProofs.submittedAt) {
-      return res
-        .status(400)
-        .json({
-          error: "order_proof_missing",
-          message: "Influencer must submit order proof before approval",
-        });
+      return res.status(400).json({
+        error: "order_proof_missing",
+        message: "Influencer must submit order proof before approval",
+      });
     }
     p.partialApproval = p.partialApproval || {};
     p.partialApproval.amount =

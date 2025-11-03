@@ -86,7 +86,17 @@ export default function InfluencerPayments() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openForm = (id, type) => setModal({ id, type });
+  const openForm = (id, type) => {
+    // Require bank details before allowing influencer to submit order/deliverables
+    if (!me || !me.bankAccountNumber || !me.bankAccountName || !me.bankName) {
+      toast?.add(
+        "Please add your bank details in your Profile before submitting order or deliverables forms.",
+        { type: "error" }
+      );
+      return;
+    }
+    setModal({ id, type });
+  };
   const closeForm = () => setModal(null);
 
   const submitOrderProof = async (id, payload) => {
@@ -238,8 +248,15 @@ export default function InfluencerPayments() {
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ scale: 1.01 }}
                     >
-                      <td className="py-3 px-2 font-semibold text-white truncate max-w-[150px] rounded-l-lg">
-                        {p.campaign?.title || p.campaignTitle || "-"}
+                      <td className="py-3 px-2 font-semibold text-white truncate max-w-[200px] rounded-l-lg">
+                        <div className="truncate font-semibold">
+                          {p.campaign?.title || p.campaignTitle || "-"}
+                        </div>
+                        {p.campaign?.brandName && (
+                          <div className="text-xs text-gray-400 truncate">
+                            {p.campaign.brandName}
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3 px-2 text-yellow-300">
