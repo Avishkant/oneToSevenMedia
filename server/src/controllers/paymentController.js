@@ -5,10 +5,13 @@ const User = require("../models/user");
 const STAGE_ORDER = "order";
 const STAGE_PAYMENT = "payment";
 
-function pushAdminCommentToPayment(p, stage, comment, by) {
+function pushAdminCommentToPayment(p, stage, comment, by, byName) {
   if (!comment) return;
   p.adminComments = p.adminComments || [];
-  p.adminComments.push({ stage: stage || STAGE_PAYMENT, comment, by });
+  const entry = { stage: stage || STAGE_PAYMENT, comment };
+  if (by) entry.by = by;
+  if (byName) entry.byName = byName;
+  p.adminComments.push(entry);
 }
 
 function pushInfluencerCommentToPayment(p, stage, comment, by) {
@@ -278,6 +281,7 @@ async function submitDeliverables(req, res) {
 async function approvePartial(req, res) {
   const id = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const reviewerName = req.user && req.user.name;
   const { amount, payNow, comment } = req.body || {};
   try {
     const p = await Payment.findById(id).populate("application");
@@ -294,18 +298,26 @@ async function approvePartial(req, res) {
     p.partialApproval.approvedBy = reviewerId;
     p.partialApproval.approvedAt = new Date();
     if (comment) {
-      pushAdminCommentToPayment(p, STAGE_PAYMENT, comment, reviewerId);
+      pushAdminCommentToPayment(
+        p,
+        STAGE_PAYMENT,
+        comment,
+        reviewerId,
+        reviewerName
+      );
       try {
         if (p.application) {
           const app = await Application.findById(p.application);
           if (app) {
             app.adminComments = app.adminComments || [];
-            app.adminComments.push({
+            const entry = {
               stage: STAGE_PAYMENT,
               comment,
               by: reviewerId,
               createdAt: new Date(),
-            });
+            };
+            if (reviewerName) entry.byName = reviewerName;
+            app.adminComments.push(entry);
             app.adminComment = comment;
           }
           await app.save();
@@ -373,6 +385,7 @@ async function approvePartial(req, res) {
 async function approveRemaining(req, res) {
   const id = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const reviewerName = req.user && req.user.name;
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
@@ -387,18 +400,26 @@ async function approveRemaining(req, res) {
     p.deliverablesProof.verifiedAt = new Date();
 
     if (comment) {
-      pushAdminCommentToPayment(p, STAGE_PAYMENT, comment, reviewerId);
+      pushAdminCommentToPayment(
+        p,
+        STAGE_PAYMENT,
+        comment,
+        reviewerId,
+        reviewerName
+      );
       try {
         if (p.application) {
           const app = await Application.findById(p.application);
           if (app) {
             app.adminComments = app.adminComments || [];
-            app.adminComments.push({
+            const entry = {
               stage: STAGE_PAYMENT,
               comment,
               by: reviewerId,
               createdAt: new Date(),
-            });
+            };
+            if (reviewerName) entry.byName = reviewerName;
+            app.adminComments.push(entry);
             app.adminComment = comment;
           }
           await app.save();

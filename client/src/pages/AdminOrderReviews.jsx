@@ -830,7 +830,13 @@ export default function AdminOrderReviews() {
                                     {c.createdAt
                                       ? new Date(c.createdAt).toLocaleString()
                                       : ""}{" "}
-                                    {c.by ? `(by ${String(c.by)})` : ""}
+                                    {c.byName
+                                      ? `(by ${c.byName})`
+                                      : c.by && c.by.name
+                                      ? `(by ${c.by.name})`
+                                      : c.by
+                                      ? `(by ${String(c.by)})`
+                                      : ""}
                                   </div>
                                   <div className="text-sm text-white">
                                     {c.comment}

@@ -40,10 +40,13 @@ const STAGE_APPLICATION = "application";
 const STAGE_ORDER = "order";
 const STAGE_PAYMENT = "payment";
 
-function pushAdminCommentToApp(app, stage, comment, by) {
+function pushAdminCommentToApp(app, stage, comment, by, byName) {
   if (!comment) return;
   app.adminComments = app.adminComments || [];
-  app.adminComments.push({ stage: stage || STAGE_APPLICATION, comment, by });
+  const entry = { stage: stage || STAGE_APPLICATION, comment };
+  if (by) entry.by = by;
+  if (byName) entry.byName = byName;
+  app.adminComments.push(entry);
   // keep legacy field in sync (most-recent admin comment)
   app.adminComment = comment;
 }
@@ -150,6 +153,7 @@ function mapRowKeys(row) {
 async function approveApplication(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const reviewerName = req.user && req.user.name;
   const { comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
@@ -157,7 +161,13 @@ async function approveApplication(req, res) {
     app.status = "approved";
     app.reviewer = reviewerId;
     if (comment)
-      pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
+      pushAdminCommentToApp(
+        app,
+        STAGE_APPLICATION,
+        comment,
+        reviewerId,
+        reviewerName
+      );
     // snapshot campaign delivery settings so the application carries the
     // fulfillment method and any per-campaign order fields at the time of
     // approval. This lets the frontend show the correct form (address vs
@@ -183,7 +193,10 @@ async function approveApplication(req, res) {
     if (!app.payout) app.payout = {};
     app.payout.amount = app.payout.amount || 0;
     await app.save();
-    res.json(app);
+    const out = app && app.toObject ? app.toObject() : app;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToApps([out], true);
+    res.json(out);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -193,6 +206,7 @@ async function approveApplication(req, res) {
 async function rejectApplication(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const reviewerName = req.user && req.user.name;
   const { reason, comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
@@ -201,9 +215,18 @@ async function rejectApplication(req, res) {
     app.reviewer = reviewerId;
     app.rejectionReason = reason;
     if (comment)
-      pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
+      pushAdminCommentToApp(
+        app,
+        STAGE_APPLICATION,
+        comment,
+        reviewerId,
+        reviewerName
+      );
     await app.save();
-    res.json(app);
+    const out = app && app.toObject ? app.toObject() : app;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToApps([out], true);
+    res.json(out);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -443,6 +466,7 @@ async function bulkReviewApplications(req, res) {
 
     const results = { updated: 0, notFound: [], errors: [] };
     const reviewerId = req.user && req.user.id;
+    const reviewerName = req.user && req.user.name;
 
     console.log(
       `bulkReviewApplications: received ${rows.length} rows for review (reviewer=${reviewerId})`
@@ -501,7 +525,13 @@ async function bulkReviewApplications(req, res) {
           app.status = "approved";
           app.reviewer = reviewerId;
           if (comment)
-            pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
+            pushAdminCommentToApp(
+              app,
+              STAGE_APPLICATION,
+              comment,
+              reviewerId,
+              reviewerName
+            );
           // snapshot campaign settings when applying approval in bulk
           try {
             const campaign = await Campaign.findById(app.campaign);
@@ -525,7 +555,13 @@ async function bulkReviewApplications(req, res) {
           app.status = "rejected";
           app.reviewer = reviewerId;
           if (comment)
-            pushAdminCommentToApp(app, STAGE_APPLICATION, comment, reviewerId);
+            pushAdminCommentToApp(
+              app,
+              STAGE_APPLICATION,
+              comment,
+              reviewerId,
+              reviewerName
+            );
           if (reason) app.rejectionReason = reason;
         } else {
           results.errors.push({
@@ -585,6 +621,7 @@ async function bulkReviewOrders(req, res) {
 
     const results = { updated: 0, notFound: [], errors: [] };
     const reviewerId = req.user && req.user.id;
+    const reviewerName = req.user && req.user.name;
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i] || {};
@@ -666,7 +703,13 @@ async function bulkReviewOrders(req, res) {
           app.payout.paid = false;
           app.payout.approvedAt = new Date();
           if (comment)
-            pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
+            pushAdminCommentToApp(
+              app,
+              STAGE_ORDER,
+              comment,
+              reviewerId,
+              reviewerName
+            );
           // create payment record for dashboard
           try {
             const amount =
@@ -698,7 +741,13 @@ async function bulkReviewOrders(req, res) {
           app.needsAppeal = true;
           app.appealFormName = app.appealFormName || "appeal form";
           if (comment)
-            pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
+            pushAdminCommentToApp(
+              app,
+              STAGE_ORDER,
+              comment,
+              reviewerId,
+              reviewerName
+            );
           // clear any submitted order fields so influencer can re-fill
           try {
             app.orderId = undefined;
@@ -824,7 +873,10 @@ async function submitOrder(req, res) {
       app.status = "order_submitted";
     }
     await app.save();
-    res.json(app);
+    const out = app && app.toObject ? app.toObject() : app;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToApps([out], true);
+    res.json(out);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -862,6 +914,7 @@ async function listOrders(req, res) {
 async function approveOrder(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const reviewerName = req.user && req.user.name;
   const { comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
@@ -887,7 +940,14 @@ async function approveOrder(req, res) {
     // mark as approved for payout processing; payment will be recorded when processed
     app.payout.paid = false;
     app.payout.approvedAt = new Date();
-    if (comment) pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
+    if (comment)
+      pushAdminCommentToApp(
+        app,
+        STAGE_ORDER,
+        comment,
+        reviewerId,
+        reviewerName
+      );
 
     // create a Payment record for processing by payments dashboard
     try {
@@ -913,7 +973,10 @@ async function approveOrder(req, res) {
     }
 
     await app.save();
-    res.json(app);
+    const out = app && app.toObject ? app.toObject() : app;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToApps([out], true);
+    res.json(out);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });
@@ -923,6 +986,7 @@ async function approveOrder(req, res) {
 async function rejectOrder(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
+  const reviewerName = req.user && req.user.name;
   const { reason, comment } = req.body || {};
   try {
     const app = await Application.findById(appId);
@@ -936,7 +1000,14 @@ async function rejectOrder(req, res) {
     app.rejectionReason = reason;
     app.needsAppeal = true;
     app.appealFormName = app.appealFormName || "appeal form";
-    if (comment) pushAdminCommentToApp(app, STAGE_ORDER, comment, reviewerId);
+    if (comment)
+      pushAdminCommentToApp(
+        app,
+        STAGE_ORDER,
+        comment,
+        reviewerId,
+        reviewerName
+      );
     try {
       app.orderId = undefined;
       app.orderData = undefined;
@@ -977,7 +1048,10 @@ async function rejectOrder(req, res) {
     }
 
     await app.save();
-    res.json(app);
+    const out = app && app.toObject ? app.toObject() : app;
+    const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
+    if (isAdmin) await attachCommenterNamesToApps([out], true);
+    res.json(out);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "server_error" });

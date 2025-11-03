@@ -58,6 +58,7 @@ const paymentSchema = new mongoose.Schema(
       {
         comment: { type: String },
         by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        byName: { type: String },
         stage: { type: String },
         createdAt: { type: Date, default: Date.now },
       },
@@ -66,6 +67,7 @@ const paymentSchema = new mongoose.Schema(
       {
         comment: { type: String },
         by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        byName: { type: String },
         stage: { type: String },
         createdAt: { type: Date, default: Date.now },
       },
