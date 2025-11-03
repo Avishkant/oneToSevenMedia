@@ -6,6 +6,8 @@ import ApplicationCard from "../components/ApplicationCard"; // External compone
 import Button from "../components/Button";
 import { motion, AnimatePresence } from "framer-motion";
 
+import AdminBackButton from "../components/AdminBackButton";
+
 // reference 'motion' to satisfy certain linters (it's used in JSX tags below)
 void motion;
 import {
@@ -380,6 +382,7 @@ export default function ApplicationsAdmin() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
+        <AdminBackButton />
         <h1 className="text-3xl font-extrabold text-cyan-400 mb-6">
           Application Review (Admin)
         </h1>

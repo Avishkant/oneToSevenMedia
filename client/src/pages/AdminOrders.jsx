@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
 import Button from "../components/Button";
+import AdminBackButton from "../components/AdminBackButton";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -72,6 +73,7 @@ export default function AdminOrders() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
+        <AdminBackButton />
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Submitted Orders</h1>
         </div>

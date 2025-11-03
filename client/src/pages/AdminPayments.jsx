@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Button from "../components/Button";
 import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
+import AdminBackButton from "../components/AdminBackButton";
 import { motion, AnimatePresence } from "framer-motion";
 // import { FaMoneyBillWave, FaCheckCircle, FaTimes, FaCoins, FaInfoCircle, FaAngleDown, FaAngleUp, FaHourglassHalf } from "react-icons/fa";
 import {
@@ -151,6 +152,7 @@ export default function AdminPayments() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
+        <AdminBackButton />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

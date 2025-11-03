@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import useToast from "../context/useToast";
 import Button from "../components/Button";
+import AdminBackButton from "../components/AdminBackButton";
 
 export default function AdminCampaignsBulk() {
   const [file, setFile] = useState(null);
@@ -39,6 +40,7 @@ export default function AdminCampaignsBulk() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-8">
       <div className="max-w-3xl mx-auto">
+        <AdminBackButton />
         <h1 className="text-2xl font-bold mb-4">Bulk Create Campaigns (CSV)</h1>
         <p className="text-sm text-slate-300 mb-4">
           Upload a CSV with headers:

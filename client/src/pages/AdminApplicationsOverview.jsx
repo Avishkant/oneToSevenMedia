@@ -3,6 +3,7 @@ import useToast from "../context/useToast";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "../components/Button";
+import AdminBackButton from "../components/AdminBackButton";
 // satisfy some linters during iterative edits
 void motion;
 
@@ -215,6 +216,7 @@ export default function AdminApplicationsOverview() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
+        <AdminBackButton />
         <h1 className="text-2xl font-bold mb-4">Applications Overview</h1>
         <div className="glass p-4 rounded text-slate-200">
           {loading && <div>Loading...</div>}
