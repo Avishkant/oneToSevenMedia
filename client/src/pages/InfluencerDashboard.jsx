@@ -54,13 +54,13 @@ function CampaignsListInner() {
     async function loadApps() {
       if (!auth?.user || auth.user.role !== "influencer") return;
       try {
+        // use a robust user id fallback in case the auth user has _id or sub
+        const uid = auth.user.id || auth.user._id || auth.user.sub;
+        if (!uid) return;
         const token = auth?.token || localStorage.getItem("accessToken");
-        const res = await fetch(
-          `/api/applications/by-influencer/${auth.user.id}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          }
-        );
+        const res = await fetch(`/api/applications/by-influencer/${uid}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) return; // ignore failures here
         const body = await res.json();
         if (mounted)

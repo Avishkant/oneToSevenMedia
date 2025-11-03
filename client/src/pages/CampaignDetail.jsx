@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
+import { useAuth } from "../context/AuthContext";
+import useToast from "../context/useToast";
 
 export default function CampaignDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(false);
+  const auth = useAuth();
+  const toast = useToast();
+  const [isApplied, setIsApplied] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +32,34 @@ export default function CampaignDetail() {
     load();
     return () => (mounted = false);
   }, [id, navigate]);
+
+  // check whether current influencer already applied
+  useEffect(() => {
+    let mounted = true;
+    async function checkApplied() {
+      if (!auth?.token || !auth?.user || auth.user.role !== "influencer")
+        return;
+      try {
+        const uid = auth.user.id || auth.user._id || auth.user.sub;
+        const res = await fetch(`/api/applications/by-influencer/${uid}`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        });
+        if (!res.ok) return;
+        const apps = await res.json();
+        if (!mounted) return;
+        const found = (apps || []).some(
+          (a) =>
+            String(a.campaign?._id || a.campaign) === String(id) &&
+            a.status !== "rejected"
+        );
+        setIsApplied(Boolean(found));
+      } catch (e) {
+        console.debug("checkApplied failed", e?.message || e);
+      }
+    }
+    checkApplied();
+    return () => (mounted = false);
+  }, [auth, id]);
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (!campaign) return null;
@@ -51,7 +84,23 @@ export default function CampaignDetail() {
           </div>
 
           <div className="mt-6 flex gap-3">
-            <Button variant="primary">Apply</Button>
+            <Button
+              variant={isApplied ? "ghost" : "primary"}
+              disabled={isApplied}
+              onClick={() => {
+                if (!auth?.token) return navigate("/influencer/login");
+                if (isApplied) {
+                  toast?.add("You have already applied to this campaign", {
+                    type: "info",
+                  });
+                  return;
+                }
+                // navigate to apply flow or open modal (kept simple here)
+                navigate(`/campaigns/${id}/apply`);
+              }}
+            >
+              {isApplied ? "Applied" : "Apply"}
+            </Button>
             <Button variant="ghost">Chat</Button>
           </div>
         </div>

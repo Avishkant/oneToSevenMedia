@@ -5,7 +5,15 @@ import Button from "../components/Button";
 import OrderModal from "../components/OrderModal";
 import ApplicationCard from "../components/ApplicationCard"; // External component
 import { motion } from "framer-motion";
-import { FaFilter, FaSearch, FaRedo, FaTag, FaCheckCircle, FaTimes, FaHourglassHalf } from "react-icons/fa";
+import {
+  FaFilter,
+  FaSearch,
+  FaRedo,
+  FaTag,
+  FaCheckCircle,
+  FaTimes,
+  FaHourglassHalf,
+} from "react-icons/fa";
 
 // --- Custom Styled Components ---
 
@@ -64,9 +72,11 @@ export default function MyApplications() {
           return res;
         }
 
+        const uid = auth.user.id || auth.user._id || auth.user.sub;
+        if (!uid) throw new Error("No user id available");
         const token = auth?.token || localStorage.getItem("accessToken");
         const res = await fetchWithRefresh(
-          `/api/applications/by-influencer/${auth.user.id}`,
+          `/api/applications/by-influencer/${uid}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           }
@@ -75,7 +85,9 @@ export default function MyApplications() {
         const body = await res.json();
         if (mounted) setItems(body || []);
       } catch (err) {
-        toast?.add(err.message || "Failed to load applications", { type: "error" });
+        toast?.add(err.message || "Failed to load applications", {
+          type: "error",
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -117,17 +129,18 @@ export default function MyApplications() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-extrabold text-cyan-400 mb-6">My Campaign Applications</h1>
+        <h1 className="text-3xl font-extrabold text-cyan-400 mb-6">
+          My Campaign Applications
+        </h1>
 
         {/* --- Filter and Search Bar (Animated) --- */}
         <motion.div
-            className="bg-gray-800/90 p-5 rounded-xl border border-gray-700 shadow-lg mb-8"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+          className="bg-gray-800/90 p-5 rounded-xl border border-gray-700 shadow-lg mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
           <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-            
             {/* Search Input */}
             <StyledInput
               value={search}
@@ -163,22 +176,22 @@ export default function MyApplications() {
             </StyledSelect>
 
             {/* Reset Button */}
-            <motion.div 
-                className="ml-auto"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <motion.div
+              className="ml-auto"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-                <Button
-                    onClick={() => {
-                        setSearch("");
-                        setCategoryFilter("");
-                        setStatusFilter("all");
-                    }}
-                    variant="secondary"
-                    className="w-full md:w-auto flex items-center justify-center gap-2"
-                >
-                    <FaRedo /> Reset Filters
-                </Button>
+              <Button
+                onClick={() => {
+                  setSearch("");
+                  setCategoryFilter("");
+                  setStatusFilter("all");
+                }}
+                variant="secondary"
+                className="w-full md:w-auto flex items-center justify-center gap-2"
+              >
+                <FaRedo /> Reset Filters
+              </Button>
             </motion.div>
           </div>
         </motion.div>
@@ -200,21 +213,21 @@ export default function MyApplications() {
 
         {/* --- Application Grid (Staggered Motion) --- */}
         {!loading && filtered.length > 0 && (
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             animate="visible"
             variants={{
-                visible: { transition: { staggerChildren: 0.1 } },
-                hidden: {},
+              visible: { transition: { staggerChildren: 0.1 } },
+              hidden: {},
             }}
           >
             {filtered.map((a, index) => (
-              <motion.div 
+              <motion.div
                 key={a._id}
                 variants={{
-                    visible: { opacity: 1, y: 0 },
-                    hidden: { opacity: 0, y: 50 },
+                  visible: { opacity: 1, y: 0 },
+                  hidden: { opacity: 0, y: 50 },
                 }}
                 transition={{ duration: 0.4 }}
               >
