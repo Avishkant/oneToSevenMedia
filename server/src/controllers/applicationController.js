@@ -154,7 +154,7 @@ async function approveApplication(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
   const reviewerName = req.user && req.user.name;
-  const { comment } = req.body || {};
+  const { comment, approvedAmount } = req.body || {};
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
@@ -687,6 +687,15 @@ async function bulkReviewOrders(req, res) {
                 app.orderFormFields = campaignSnap.orderFormFields;
               if (campaignSnap.payoutRelease)
                 app.payoutRelease = campaignSnap.payoutRelease;
+              // Default application payout to campaign budget when not provided
+              if (!app.payout) app.payout = {};
+              if (
+                (typeof app.payout.amount === "undefined" ||
+                  app.payout.amount === null) &&
+                typeof campaignSnap.budget === "number"
+              ) {
+                app.payout.amount = campaignSnap.budget;
+              }
             }
           } catch (e) {
             // don't fail the whole import for snapshot errors
@@ -722,6 +731,9 @@ async function bulkReviewOrders(req, res) {
               campaign: app.campaign,
               amount,
               totalPayout: amount,
+              fulfillmentMethod:
+                app.fulfillmentMethod ||
+                (campaignSnap && campaignSnap.fulfillmentMethod),
               paymentType: app.paymentType || "full",
               status: "pending",
             });
@@ -920,8 +932,9 @@ async function approveOrder(req, res) {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
     // snapshot campaign/payment settings
+    let campaign = null;
     try {
-      const campaign = await Campaign.findById(app.campaign);
+      campaign = await Campaign.findById(app.campaign);
       if (campaign) {
         if (campaign.fulfillmentMethod)
           app.fulfillmentMethod = campaign.fulfillmentMethod;
@@ -929,6 +942,15 @@ async function approveOrder(req, res) {
           app.orderFormFields = campaign.orderFormFields;
         if (campaign.paymentType) app.paymentType = campaign.paymentType;
         if (campaign.payoutRelease) app.payoutRelease = campaign.payoutRelease;
+        // Default application payout amount to campaign budget when not provided
+        if (!app.payout) app.payout = {};
+        if (
+          (typeof app.payout.amount === "undefined" ||
+            app.payout.amount === null) &&
+          typeof campaign.budget === "number"
+        ) {
+          app.payout.amount = campaign.budget;
+        }
       }
     } catch (e) {
       console.warn("approveOrder: failed to snapshot campaign", e && e.message);
@@ -937,6 +959,16 @@ async function approveOrder(req, res) {
     app.status = "order_form_approved";
     app.reviewer = reviewerId;
     if (!app.payout) app.payout = {};
+    // If admin supplied an approvedAmount (from admin UI), use it as the
+    // application payout amount. Otherwise keep any existing value or
+    // fallback to campaign budget (handled earlier).
+    if (
+      typeof approvedAmount !== "undefined" &&
+      approvedAmount !== null &&
+      !Number.isNaN(Number(approvedAmount))
+    ) {
+      app.payout.amount = Number(approvedAmount);
+    }
     // mark as approved for payout processing; payment will be recorded when processed
     app.payout.paid = false;
     app.payout.approvedAt = new Date();
@@ -955,16 +987,30 @@ async function approveOrder(req, res) {
         app.payout && typeof app.payout.amount === "number"
           ? app.payout.amount
           : 0;
-      await Payment.create({
+      // If this campaign uses refund_on_delivery semantics and the order was
+      // placed by the influencer, record the approved order amount as a
+      // partialApproval so the payments dashboard can display it in the
+      // "partial amount to be paid" column and the payments processor can
+      // act on it.
+      const paymentPayload = {
         application: app._id,
         influencer: app.influencer,
         campaign: app.campaign,
         amount,
         totalPayout: amount,
+        fulfillmentMethod:
+          app.fulfillmentMethod || (campaign && campaign.fulfillmentMethod),
         paymentType: app.paymentType || "full",
         payoutRelease: app.payoutRelease || undefined,
         status: "pending",
-      });
+      };
+      // Consider campaign-level payoutRelease as fallback
+      const payoutRelease =
+        app.payoutRelease || (campaign && campaign.payoutRelease);
+      if (payoutRelease === "refund_on_delivery" && amount > 0) {
+        paymentPayload.partialApproval = { amount, paid: false };
+      }
+      await Payment.create(paymentPayload);
     } catch (e) {
       console.warn(
         "approveOrder: failed to create payment record",

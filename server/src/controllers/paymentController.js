@@ -60,11 +60,30 @@ async function listPayments(req, res) {
     if (req.query && req.query.status) q.status = req.query.status;
     const items = await Payment.find(q)
       .populate("influencer", "name email")
-      .populate("campaign", "title brandName")
+      .populate("campaign", "title brandName budget")
       .populate("application", "status payout");
     // Attach commenter names for admin viewers
     const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
     const objs = (items || []).map((i) => (i && i.toObject ? i.toObject() : i));
+    // merge any application-level comments into the payment object so admin
+    // dashboard shows the full history (some comments may have been stored
+    // on the Application during earlier workflows).
+    objs.forEach((p) => {
+      try {
+        if (p.application) {
+          const a = p.application;
+          // merge admin comments (payment-level first)
+          p.adminComments = (p.adminComments || []).concat(
+            a.adminComments || []
+          );
+          p.influencerComments = (p.influencerComments || []).concat(
+            a.influencerComments || []
+          );
+        }
+      } catch (e) {
+        // ignore merge errors
+      }
+    });
     if (isAdmin) await attachCommenterNamesToPayments(objs, true);
     res.json(objs);
   } catch (err) {
@@ -80,10 +99,27 @@ async function updatePayment(req, res) {
     const p = await Payment.findById(id);
     if (!p) return res.status(404).json({ error: "not_found" });
 
-    if (typeof status !== "undefined") p.status = status;
+    // If admin is attempting to mark payment as PAID, require deliverables proof
+    if (typeof status !== "undefined") {
+      if (status === "paid") {
+        // disallow marking paid unless deliverables proof exists
+        if (!p.deliverablesProof || !p.deliverablesProof.submittedAt) {
+          return res
+            .status(400)
+            .json({
+              error: "deliverables_missing",
+              message: "Cannot mark paid before deliverables are submitted",
+            });
+        }
+      }
+      p.status = status;
+    }
     if (typeof metadata !== "undefined") p.metadata = metadata;
 
     await p.save();
+
+    // Ensure returned payment includes campaign budget for admin UI
+    await p.populate("campaign", "title brandName budget");
 
     // If marked paid, also update associated application payout record
     if (p.status === "paid" && p.application) {
@@ -107,7 +143,21 @@ async function updatePayment(req, res) {
 
     // attach commenter names when admin is calling
     const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
-    const out = p && p.toObject ? p.toObject() : p;
+    let out = p && p.toObject ? p.toObject() : p;
+    // merge application-level comments to the returned payment object
+    try {
+      if (out.application) {
+        const a = out.application;
+        out.adminComments = (out.adminComments || []).concat(
+          a.adminComments || []
+        );
+        out.influencerComments = (out.influencerComments || []).concat(
+          a.influencerComments || []
+        );
+      }
+    } catch (e) {
+      // ignore
+    }
     if (isAdmin) await attachCommenterNamesToPayments([out], true);
     res.json(out);
   } catch (err) {
@@ -121,7 +171,7 @@ async function listMyPayments(req, res) {
     const userId = req.user && req.user.id;
     if (!userId) return res.status(400).json({ error: "missing_user" });
     const items = await Payment.find({ influencer: userId })
-      .populate("campaign", "title brandName")
+      .populate("campaign", "title brandName budget")
       .populate("application", "status payout");
     // For influencer views, only expose admin comment relevant to the
     // payment stage (admins get the full adminComments history from
@@ -158,20 +208,71 @@ module.exports = {
 async function submitOrderProof(req, res) {
   const id = req.params.id;
   const userId = req.user && req.user.id;
-  const { orderScreenshot, deliveredScreenshot, orderAmount, comment } =
-    req.body || {};
+  const {
+    orderScreenshot,
+    deliveredScreenshot,
+    orderAmount,
+    engagementRate,
+    impressions,
+    postLink,
+    comments,
+    reach,
+    videoViews,
+    reelLink,
+    storyLink,
+    feedback,
+    storyViews,
+    storyInteractions,
+    storyScreenshots,
+    comment,
+  } = req.body || {};
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
     if (String(p.influencer) !== String(userId))
       return res.status(403).json({ error: "forbidden" });
 
+    // Validate required fields: orderAmount (Request Amount) and orderScreenshot
+    if (typeof orderAmount === "undefined" || !orderScreenshot) {
+      return res
+        .status(400)
+        .json({
+          error: "missing_required_fields",
+          message: "orderAmount and orderScreenshot are required",
+        });
+    }
+
     p.orderProofs = p.orderProofs || {};
-    if (orderScreenshot) p.orderProofs.orderScreenshot = orderScreenshot;
+    p.orderProofs.orderScreenshot = orderScreenshot;
     if (deliveredScreenshot)
       p.orderProofs.deliveredScreenshot = deliveredScreenshot;
-    if (typeof orderAmount !== "undefined")
-      p.orderProofs.orderAmount = Number(orderAmount);
+    p.orderProofs.orderAmount = Number(orderAmount);
+    if (engagementRate) p.orderProofs.engagementRate = String(engagementRate);
+    if (typeof impressions !== "undefined")
+      p.orderProofs.impressions = Number(impressions);
+    if (postLink) p.orderProofs.postLink = postLink;
+    if (comments) p.orderProofs.comments = comments;
+    if (typeof reach !== "undefined") p.orderProofs.reach = Number(reach);
+    if (typeof videoViews !== "undefined")
+      p.orderProofs.videoViews = Number(videoViews);
+    if (reelLink) p.orderProofs.reelLink = reelLink;
+    if (storyLink) p.orderProofs.storyLink = storyLink;
+    if (feedback) p.orderProofs.feedback = feedback;
+    if (typeof storyViews !== "undefined")
+      p.orderProofs.storyViews = Number(storyViews);
+    if (typeof storyInteractions !== "undefined")
+      p.orderProofs.storyInteractions = Number(storyInteractions);
+    // storyScreenshots may be sent as array or comma-separated string
+    if (storyScreenshots) {
+      if (Array.isArray(storyScreenshots))
+        p.orderProofs.storyScreenshots = storyScreenshots;
+      else if (typeof storyScreenshots === "string") {
+        p.orderProofs.storyScreenshots = storyScreenshots
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
     p.orderProofs.submittedAt = new Date();
     if (comment) {
       pushInfluencerCommentToPayment(p, STAGE_ORDER, comment, userId);
@@ -229,16 +330,66 @@ async function submitOrderProof(req, res) {
 async function submitDeliverables(req, res) {
   const id = req.params.id;
   const userId = req.user && req.user.id;
-  const { proof, comment } = req.body || {};
+  const {
+    proof,
+    comment,
+    engagementRate,
+    impressions,
+    postLink,
+    comments,
+    reach,
+    videoViews,
+    reelLink,
+    storyLink,
+    feedback,
+    storyViews,
+    storyInteractions,
+    storyScreenshots,
+  } = req.body || {};
   try {
     const p = await Payment.findById(id).populate("application");
     if (!p) return res.status(404).json({ error: "not_found" });
     if (String(p.influencer) !== String(userId))
       return res.status(403).json({ error: "forbidden" });
+    // Require a proof URL and basic info
+    if (!proof) {
+      return res
+        .status(400)
+        .json({
+          error: "missing_required_fields",
+          message: "deliverables proof is required",
+        });
+    }
 
     p.deliverablesProof = p.deliverablesProof || {};
-    if (proof) p.deliverablesProof.proof = proof;
+    p.deliverablesProof.proof = proof;
     p.deliverablesProof.submittedAt = new Date();
+    if (engagementRate)
+      p.deliverablesProof.engagementRate = String(engagementRate);
+    if (typeof impressions !== "undefined")
+      p.deliverablesProof.impressions = Number(impressions);
+    if (postLink) p.deliverablesProof.postLink = postLink;
+    if (comments) p.deliverablesProof.comments = comments;
+    if (typeof reach !== "undefined") p.deliverablesProof.reach = Number(reach);
+    if (typeof videoViews !== "undefined")
+      p.deliverablesProof.videoViews = Number(videoViews);
+    if (reelLink) p.deliverablesProof.reelLink = reelLink;
+    if (storyLink) p.deliverablesProof.storyLink = storyLink;
+    if (feedback) p.deliverablesProof.feedback = feedback;
+    if (typeof storyViews !== "undefined")
+      p.deliverablesProof.storyViews = Number(storyViews);
+    if (typeof storyInteractions !== "undefined")
+      p.deliverablesProof.storyInteractions = Number(storyInteractions);
+    if (storyScreenshots) {
+      if (Array.isArray(storyScreenshots))
+        p.deliverablesProof.storyScreenshots = storyScreenshots;
+      else if (typeof storyScreenshots === "string") {
+        p.deliverablesProof.storyScreenshots = storyScreenshots
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
     if (comment) {
       pushInfluencerCommentToPayment(p, STAGE_PAYMENT, comment, userId);
       try {
@@ -291,6 +442,15 @@ async function approvePartial(req, res) {
       (p.payoutRelease || p.campaign?.payoutRelease) !== "refund_on_delivery"
     ) {
       return res.status(400).json({ error: "invalid_payout_flow" });
+    }
+    // require influencer to have submitted order proof before admin approves
+    if (!p.orderProofs || !p.orderProofs.submittedAt) {
+      return res
+        .status(400)
+        .json({
+          error: "order_proof_missing",
+          message: "Influencer must submit order proof before approval",
+        });
     }
     p.partialApproval = p.partialApproval || {};
     p.partialApproval.amount =
@@ -372,7 +532,22 @@ async function approvePartial(req, res) {
     }
     await p.save();
     // attach commenter names for admin response
-    const out = p && p.toObject ? p.toObject() : p;
+    // populate campaign budget for response
+    await p.populate("campaign", "title brandName budget");
+    let out = p && p.toObject ? p.toObject() : p;
+    try {
+      if (out.application) {
+        const a = out.application;
+        out.adminComments = (out.adminComments || []).concat(
+          a.adminComments || []
+        );
+        out.influencerComments = (out.influencerComments || []).concat(
+          a.influencerComments || []
+        );
+      }
+    } catch (e) {
+      // ignore
+    }
     const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
     if (isAdmin) await attachCommenterNamesToPayments([out], true);
     res.json(out);
@@ -467,7 +642,21 @@ async function approveRemaining(req, res) {
 
     await p.save();
     // attach commenter names for admin response
-    const out = p && p.toObject ? p.toObject() : p;
+    await p.populate("campaign", "title brandName budget");
+    let out = p && p.toObject ? p.toObject() : p;
+    try {
+      if (out.application) {
+        const a = out.application;
+        out.adminComments = (out.adminComments || []).concat(
+          a.adminComments || []
+        );
+        out.influencerComments = (out.influencerComments || []).concat(
+          a.influencerComments || []
+        );
+      }
+    } catch (e) {
+      // ignore
+    }
     const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
     if (isAdmin) await attachCommenterNamesToPayments([out], true);
     res.json(out);

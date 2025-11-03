@@ -47,6 +47,8 @@ export default function AdminOrderReviews() {
   const [selectedApp, setSelectedApp] = useState(null);
   const [actionState, setActionState] = useState(null);
   const [orderModalApp, setOrderModalApp] = useState(null);
+  const [partialAmount, setPartialAmount] = useState("");
+  const [partialComment, setPartialComment] = useState("");
   const [importResults, setImportResults] = useState(null);
   const [importResultsOpen, setImportResultsOpen] = useState(false);
 
@@ -228,8 +230,12 @@ export default function AdminOrderReviews() {
   const closeActionModal = () => setActionState(null);
   const confirmActionModal = async () => {
     if (!actionState) return;
-    const { app, verb, comment, reason } = actionState;
-    const result = await act(app._id, verb, { comment, reason });
+    const { app, verb, comment, reason, approvedAmount } = actionState;
+    const extra = { comment, reason };
+    if (typeof approvedAmount !== "undefined" && approvedAmount !== "") {
+      extra.approvedAmount = Number(approvedAmount);
+    }
+    const result = await act(app._id, verb, extra);
     // result may be the updated application or null
     const updatedApp = result || app;
     // determine fulfillment method: influencer or brand
@@ -1048,6 +1054,116 @@ export default function AdminOrderReviews() {
                     );
                   })()}
                 </div>
+
+                {/* Partial approval UI for influencer-ordered / refund_on_delivery flows */}
+                {(selectedApp.fulfillmentMethod === "influencer" ||
+                  selectedApp.payoutRelease === "refund_on_delivery") && (
+                  <div className="md:col-span-2 mt-4 p-4 bg-gray-800/60 rounded-lg border border-gray-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-lg font-bold text-yellow-300">
+                        Partial Payment Approval
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Use this to approve a partial refund/advance for
+                        influencer-placed orders.
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                      <div>
+                        <div className="text-sm text-gray-300 mb-1">
+                          Approved Partial Amount (numeric)
+                        </div>
+                        <StyledInput
+                          value={partialAmount}
+                          onChange={(e) => setPartialAmount(e.target.value)}
+                          placeholder="e.g. 500"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <div className="text-sm text-gray-300 mb-1">
+                          Optional admin note
+                        </div>
+                        <StyledInput
+                          value={partialComment}
+                          onChange={(e) => setPartialComment(e.target.value)}
+                          placeholder="Short note recorded with approval"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 text-right flex gap-2 justify-end">
+                      <Button
+                        onClick={async () => {
+                          // find the payment record for this application then call approve-partial
+                          try {
+                            const res = await fetchWithAuth(`/api/payments`);
+                            if (!res.ok)
+                              throw new Error("Failed to fetch payments");
+                            const list = await res.json();
+                            const p = (list || []).find(
+                              (x) =>
+                                String(x.application) ===
+                                  String(selectedApp._id) ||
+                                (x.application &&
+                                  x.application._id === selectedApp._id)
+                            );
+                            if (!p)
+                              return toast?.add(
+                                "Payment record not found for this application",
+                                { type: "error" }
+                              );
+                            const amt = Number(partialAmount);
+                            if (Number.isNaN(amt) || amt <= 0)
+                              return toast?.add(
+                                "Enter a valid partial amount",
+                                { type: "error" }
+                              );
+                            const payNow = false; // admin can mark paid from payments dashboard
+                            const r2 = await fetchWithAuth(
+                              `/api/payments/${p._id}/approve-partial`,
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  amount: amt,
+                                  payNow,
+                                  comment: partialComment,
+                                }),
+                              }
+                            );
+                            if (!r2.ok) {
+                              const b = await r2.json().catch(() => ({}));
+                              throw new Error(
+                                b.error || "Approve partial failed"
+                              );
+                            }
+                            toast?.add("Partial payment approved", {
+                              type: "success",
+                            });
+                            setPartialAmount("");
+                            setPartialComment("");
+                            await load(); // reload orders
+                          } catch (err) {
+                            toast?.add(err.message || "Action failed", {
+                              type: "error",
+                            });
+                          }
+                        }}
+                        variant="accent"
+                      >
+                        Approve Partial
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setPartialAmount("");
+                          setPartialComment("");
+                        }}
+                        variant="secondary"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1088,6 +1204,28 @@ export default function AdminOrderReviews() {
                   }
                   placeholder="Add a note for the influencer"
                 />
+                {/* If approving and this is an influencer-order, collect approved amount */}
+                {actionState.verb === "approve" &&
+                  (actionState.app?.fulfillmentMethod ||
+                    actionState.app?.campaign?.fulfillmentMethod ||
+                    "influencer") === "influencer" && (
+                    <div className="mt-4">
+                      <div className="text-sm text-yellow-300 font-semibold mb-1">
+                        Approved Order Amount
+                      </div>
+                      <StyledInput
+                        value={actionState.approvedAmount || ""}
+                        onChange={(e) =>
+                          setActionState((s) => ({
+                            ...s,
+                            approvedAmount: e.target.value,
+                          }))
+                        }
+                        placeholder="Enter numeric approved amount"
+                        type="number"
+                      />
+                    </div>
+                  )}
                 {actionState.verb === "reject" && (
                   <div className="mt-4">
                     <div className="text-sm text-rose-400 font-semibold mb-1">

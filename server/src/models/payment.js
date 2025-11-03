@@ -18,6 +18,11 @@ const paymentSchema = new mongoose.Schema(
     paymentType: { type: String }, // e.g., partial, on_place, on_completion, full
     // snapshot of campaign payout release timing (for dashboard/processing)
     payoutRelease: { type: String },
+    // snapshot of fulfillment method at approval time ('influencer' or 'brand')
+    fulfillmentMethod: {
+      type: String,
+      enum: ["influencer", "brand"],
+    },
     status: {
       type: String,
       enum: [
@@ -34,9 +39,22 @@ const paymentSchema = new mongoose.Schema(
     metadata: { type: Object },
     // proofs and partial payout bookkeeping for refund_on_delivery flow
     orderProofs: {
-      orderScreenshot: { type: String },
+      orderScreenshot: { type: String }, // main screenshot (required at submission)
       deliveredScreenshot: { type: String },
-      orderAmount: { type: Number },
+      orderAmount: { type: Number }, // Request Amount in ₹
+      // additional optional analytics/links submitted by influencer
+      engagementRate: { type: String },
+      impressions: { type: Number },
+      postLink: { type: String },
+      comments: { type: String },
+      reach: { type: Number },
+      videoViews: { type: Number },
+      reelLink: { type: String },
+      storyLink: { type: String },
+      feedback: { type: String },
+      storyViews: { type: Number },
+      storyInteractions: { type: Number },
+      storyScreenshots: [{ type: String }],
       submittedAt: { type: Date },
     },
     partialApproval: {
@@ -52,6 +70,19 @@ const paymentSchema = new mongoose.Schema(
       verified: { type: Boolean, default: false },
       verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       verifiedAt: { type: Date },
+      // optional deliverables analytics/links similar to orderProofs
+      engagementRate: { type: String },
+      impressions: { type: Number },
+      postLink: { type: String },
+      comments: { type: String },
+      reach: { type: Number },
+      videoViews: { type: Number },
+      reelLink: { type: String },
+      storyLink: { type: String },
+      feedback: { type: String },
+      storyViews: { type: Number },
+      storyInteractions: { type: Number },
+      storyScreenshots: [{ type: String }],
     },
     // admin/influencer comment history related to this payment lifecycle
     adminComments: [
