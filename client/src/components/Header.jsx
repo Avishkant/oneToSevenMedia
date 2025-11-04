@@ -85,12 +85,12 @@ export default function Header() {
           .toUpperCase()
       : "";
 
-  const hasPerm = (key) =>
-    !!(
-      user &&
-      Array.isArray(user.permissions) &&
-      user.permissions.includes(key)
-    );
+  const hasPerm = (key) => {
+    // Superadmins have all permissions implicitly
+    if (!user) return false;
+    if (user.role === "superadmin") return true;
+    return Array.isArray(user.permissions) && user.permissions.includes(key);
+  };
 
   const canCampaign = hasPerm("campaigns:manage");
   const canCampaignCreate = hasPerm("campaign:create");
@@ -225,8 +225,15 @@ export default function Header() {
                           {initials}
                         </div>
                         <div>
-                          <div className="font-semibold text-white">
-                            {user.name || user.email}
+                          <div className="flex items-center gap-2">
+                            <div className="font-semibold text-white">
+                              {user.name || user.email}
+                            </div>
+                            {user.role === "superadmin" && (
+                              <span className="ml-2 inline-block px-2 py-0.5 text-xs bg-yellow-400 text-gray-900 rounded-full font-semibold">
+                                Superadmin
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-400 truncate">
                             {user.email}
