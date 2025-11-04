@@ -1,8 +1,8 @@
 const dotenv = require("dotenv");
+// Load environment variables before importing modules that may read them
+dotenv.config();
 const mongoose = require("mongoose");
 const createApp = require("./app");
-
-dotenv.config();
 
 // Global error handlers to log unexpected errors so platform logs capture them.
 process.on("unhandledRejection", (reason, promise) => {

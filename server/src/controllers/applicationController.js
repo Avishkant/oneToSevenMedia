@@ -193,6 +193,15 @@ async function approveApplication(req, res) {
     if (!app.payout) app.payout = {};
     app.payout.amount = app.payout.amount || 0;
     await app.save();
+    // DEBUG: log whether a screenshot URL was received and persisted
+    try {
+      console.log(
+        `submitOrder: saved app=${app._id} campaignScreenshot=${app.campaignScreenshot}`
+      );
+    } catch (e) {
+      console.warn("submitOrder: debug log failed", e && e.message);
+    }
+
     const out = app && app.toObject ? app.toObject() : app;
     const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
     if (isAdmin) await attachCommenterNamesToApps([out], true);
@@ -915,6 +924,20 @@ async function listOrders(req, res) {
     const visible = (items || []).filter((a) => Boolean(a.campaign));
     const isAdmin = req.user && ["admin", "superadmin"].includes(req.user.role);
     const objs = visible.map((i) => (i && i.toObject ? i.toObject() : i));
+    // DEBUG: show sample of campaignScreenshot values for admin order list
+    try {
+      const sample = objs.slice(0, 20).map((o) => ({
+        id: o._id,
+        campaignScreenshot: o.campaignScreenshot || null,
+      }));
+      console.log(
+        `listOrders: returning ${objs.length} items; sample screenshots:`,
+        sample
+      );
+    } catch (e) {
+      console.warn("listOrders: debug log failed", e && e.message);
+    }
+
     await attachCommenterNamesToApps(objs, !!isAdmin);
     res.json(objs);
   } catch (err) {
@@ -927,7 +950,7 @@ async function approveOrder(req, res) {
   const appId = req.params.id;
   const reviewerId = req.user && req.user.id;
   const reviewerName = req.user && req.user.name;
-  const { comment } = req.body || {};
+  const { comment, approvedAmount } = req.body || {};
   try {
     const app = await Application.findById(appId);
     if (!app) return res.status(404).json({ error: "not_found" });
@@ -954,6 +977,27 @@ async function approveOrder(req, res) {
       }
     } catch (e) {
       console.warn("approveOrder: failed to snapshot campaign", e && e.message);
+    }
+
+    // Determine payoutRelease and fulfillment method for validation
+    const payoutRelease =
+      app.payoutRelease || (campaign && campaign.payoutRelease);
+    const method =
+      app.fulfillmentMethod ||
+      (campaign && campaign.fulfillmentMethod) ||
+      "influencer";
+
+    // If admin supplied an approvedAmount, ensure this campaign actually uses
+    // refund_on_delivery semantics with influencer-placed orders. Reject otherwise.
+    if (
+      typeof approvedAmount !== "undefined" &&
+      !(payoutRelease === "refund_on_delivery" && method === "influencer")
+    ) {
+      return res.status(400).json({
+        error: "invalid_approved_amount",
+        message:
+          "approvedAmount may only be supplied for influencer-placed orders using refund_on_delivery payoutRelease",
+      });
     }
 
     app.status = "order_form_approved";

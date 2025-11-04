@@ -52,13 +52,39 @@ export default function AdminOrders() {
   const act = async (id, verb) => {
     try {
       const token = auth?.token || localStorage.getItem("accessToken");
+      // Build request body; include approvedAmount when approving orders that require partial approval
+      const sel = selected || {};
+      const fulfillmentMethod =
+        sel.app?.fulfillmentMethod || sel.app?.campaign?.fulfillmentMethod;
+      const payoutRelease =
+        sel.app?.payoutRelease || sel.app?.campaign?.payoutRelease;
+      const bodyObj = { comment: sel?.comment };
+      if (
+        verb === "approve" &&
+        fulfillmentMethod === "influencer" &&
+        payoutRelease === "refund_on_delivery"
+      ) {
+        const amt = sel?.approvedAmount;
+        if (
+          typeof amt === "undefined" ||
+          amt === null ||
+          String(amt).trim() === "" ||
+          Number.isNaN(Number(amt))
+        ) {
+          throw new Error(
+            "Please enter a valid approved amount before approving this order."
+          );
+        }
+        bodyObj.approvedAmount = Number(amt);
+      }
+
       const res = await fetch(`/api/applications/${id}/order/${verb}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ comment: selected?.comment }),
+        body: JSON.stringify(bodyObj),
       });
       if (!res.ok) throw new Error("Action failed");
       await res.json();
@@ -104,7 +130,11 @@ export default function AdminOrders() {
                     <div className="flex flex-col gap-2">
                       <Button
                         onClick={() => {
-                          setSelected({ app: o, comment: "" });
+                          setSelected({
+                            app: o,
+                            comment: "",
+                            approvedAmount: o.payout?.amount ?? "",
+                          });
                         }}
                         variant="primary"
                         size="sm"
@@ -141,6 +171,30 @@ export default function AdminOrders() {
                   <div className="text-sm text-slate-300">
                     Amount: {selected.app.payout?.amount ?? 0}
                   </div>
+                  {(selected.app.fulfillmentMethod ||
+                    selected.app.campaign?.fulfillmentMethod) ===
+                    "influencer" &&
+                    (selected.app.payoutRelease ||
+                      selected.app.campaign?.payoutRelease) ===
+                      "refund_on_delivery" && (
+                      <div className="mt-3">
+                        <div className="text-sm font-medium text-slate-300">
+                          Approved partial amount (for refund_on_delivery)
+                        </div>
+                        <input
+                          type="number"
+                          value={selected.approvedAmount}
+                          onChange={(e) =>
+                            setSelected((s) => ({
+                              ...s,
+                              approvedAmount: e.target.value,
+                            }))
+                          }
+                          className="mt-2 w-full p-2 rounded bg-white/5 text-sm"
+                          placeholder="Enter approved partial amount"
+                        />
+                      </div>
+                    )}
                   {selected.app.campaignScreenshot && (
                     <div className="mt-2">
                       <div className="text-sm font-semibold">Screenshot</div>

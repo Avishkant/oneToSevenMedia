@@ -218,6 +218,18 @@ export default function OrderModal({
 
     setSelectedFile(file);
     setUploading(true);
+    // Debug: log upload start so devtools console shows activity when user clicks
+    try {
+      console.log("handleFileUpload: starting upload", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        cloudName,
+        uploadPreset,
+      });
+    } catch {
+      // ignore
+    }
 
     try {
       // 1. Client-side Cloudinary unsigned upload
@@ -256,24 +268,103 @@ export default function OrderModal({
           headers.Authorization = `Bearer ${token}`;
         }
 
+        // Debug: log that we're about to call the server upload endpoint
+        console.log("handleFileUpload: falling back to server /api/uploads", {
+          headers,
+        });
         const res = await fetch(`/api/uploads`, {
           method: "POST",
           headers: headers, // FIX: Pass only Authorization header here
           body: form,
         });
 
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Server upload failed (${res.status})`);
-        }
-
-        const body = await res.json();
-        if (body && body.url) {
-          setScreenshotUrl(body.url);
-          toast?.add("Screenshot uploaded (via server)", { type: "success" });
-          setSelectedFile(null);
+        if (res.ok) {
+          const body = await res.json();
+          if (body && body.url) {
+            setScreenshotUrl(body.url);
+            toast?.add("Screenshot uploaded (via server)", { type: "success" });
+            setSelectedFile(null);
+          } else {
+            throw new Error("Server upload did not return a URL");
+          }
         } else {
-          throw new Error("Server upload did not return a URL");
+          // Try base64 JSON fallback if multipart upload failed (some dev proxies or clients
+          // can interfere with multipart requests). This reads the file as a data URL and
+          // posts JSON to /api/uploads/base64 which the server accepts.
+          const serverBody = await res.json().catch(() => ({}));
+          console.warn(
+            "Server multipart upload failed, attempting base64 fallback",
+            serverBody
+          );
+
+          // read file as data URL
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsDataURL(file);
+          });
+
+          const jsonRes = await fetch(`/api/uploads/base64`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ filename: file.name, data: dataUrl }),
+          });
+          if (!jsonRes.ok) {
+            const jb = await jsonRes.json().catch(() => ({}));
+            console.warn(
+              "Server base64 upload failed, attempting disk-backed fallback",
+              jb,
+              jsonRes.status
+            );
+            // Try disk-backed upload as a final fallback: send the original File using multipart/form-data
+            try {
+              const diskForm = new FormData();
+              diskForm.append("file", file);
+              const diskHeaders = {};
+              if (token) diskHeaders.Authorization = `Bearer ${token}`;
+              const diskRes = await fetch(`/api/uploads/disk`, {
+                method: "POST",
+                headers: diskHeaders,
+                body: diskForm,
+              });
+              if (diskRes.ok) {
+                const db = await diskRes.json();
+                if (db && db.url) {
+                  setScreenshotUrl(db.url);
+                  toast?.add("Screenshot uploaded (via server disk)", {
+                    type: "success",
+                  });
+                  setSelectedFile(null);
+                  return;
+                }
+              }
+              const dbj = await diskRes.json().catch(() => ({}));
+              throw new Error(
+                dbj.error || `Server disk upload failed (${diskRes.status})`
+              );
+            } catch (diskErr) {
+              throw new Error(
+                jb.error ||
+                  diskErr.message ||
+                  `Server base64 upload failed (${jsonRes.status})`
+              );
+            }
+          }
+
+          const jb = await jsonRes.json();
+          if (jb && jb.url) {
+            setScreenshotUrl(jb.url);
+            toast?.add("Screenshot uploaded (via server base64)", {
+              type: "success",
+            });
+            setSelectedFile(null);
+          } else {
+            throw new Error("Server base64 upload did not return a URL");
+          }
         }
       }
     } catch (err) {

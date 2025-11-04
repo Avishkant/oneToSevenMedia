@@ -51,7 +51,8 @@ function createApp() {
     // Also ensure OPTIONS are accepted when using permissive CORS
     app.options("*", cors());
   }
-  app.use(express.json());
+  // Increase JSON body size to allow base64 upload fallbacks for images
+  app.use(express.json({ limit: "10mb" }));
 
   // health - return 200 only when app is running and (optionally) DB is connected
   app.get("/api/health", (_req, res) => {
@@ -87,6 +88,44 @@ function createApp() {
   if (uploadRoutes) {
     app.use("/api/uploads", uploadRoutes);
   }
+
+  // Global error handler to return JSON for common middleware errors (e.g., multer file size limits)
+  // This should be the last middleware so it can catch errors from routes/middlewares above.
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    try {
+      // Multer file size exceed error
+      if (err && err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(413)
+          .json({
+            error: "file_too_large",
+            detail: "File exceeds maximum allowed size",
+          });
+      }
+      // Other known multer errors
+      if (err && err.name === "MulterError") {
+        return res
+          .status(400)
+          .json({ error: "upload_error", detail: err.message });
+      }
+      // Generic handler
+      console.error(
+        "Unhandled error in request pipeline",
+        err && err.stack ? err.stack : err
+      );
+      return res
+        .status(500)
+        .json({
+          error: "server_error",
+          detail: (err && err.message) || "unexpected error",
+        });
+    } catch (e) {
+      // fallback
+      console.error("Error in error handler", e && e.stack ? e.stack : e);
+      return res.status(500).json({ error: "server_error" });
+    }
+  });
 
   return app;
 }
