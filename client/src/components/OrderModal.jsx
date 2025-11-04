@@ -286,7 +286,7 @@ export default function OrderModal({
 
   return (
     // Modal styled to match dark theme with animation
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[10001] flex items-start sm:items-center justify-center p-4 backdrop-blur-sm">
       <div
         className="absolute inset-0 bg-black/70"
         onClick={() => !submitting && onClose && onClose()}
@@ -297,7 +297,7 @@ export default function OrderModal({
         exit={{ scale: 0.9, y: -20, opacity: 0 }}
         transition={{ duration: 0.3 }}
         onSubmit={handleSubmit}
-        className="relative bg-gray-800 text-white rounded-xl p-6 w-full max-w-md z-[10002] shadow-2xl border border-purple-500/50"
+        className="relative bg-gray-800 text-white rounded-xl p-6 w-full max-w-md z-[10002] shadow-2xl border border-purple-500/50 max-h-[calc(100vh-4rem)] overflow-y-auto mt-6 sm:mt-0"
       >
         {/** Show a distinct header/banner when this is an appeal/resubmission */}
         <h2 className="text-xl font-extrabold text-cyan-400 mb-2">
@@ -632,43 +632,46 @@ export default function OrderModal({
           />
         </label>
 
-        <div className="flex items-center gap-3 justify-end">
-          <Button
-            type="button"
-            onClick={() => !submitting && !uploading && onClose && onClose()}
-            variant="secondary"
-            disabled={submitting || uploading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={
-              submitting ||
-              uploading ||
-              (methodRender === "brand"
-                ? !(
-                    shippingAddress &&
-                    shippingAddress.line1 &&
-                    shippingAddress.postalCode
-                  )
-                : !orderId.trim() || amount === "" || isNaN(Number(amount))) ||
-              (methodRender !== "brand" && !bankOk)
-            }
-            variant="success"
-            className="flex items-center gap-2"
-          >
-            {uploading ? (
-              "Uploading..."
-            ) : submitting ? (
-              "Submitting..."
-            ) : (
-              <>
-                {" "}
-                <FaCheckCircle /> Submit Order
-              </>
-            )}
-          </Button>
+        <div className="sticky bottom-0 -mx-6 px-6 pt-3 pb-4 bg-gradient-to-t from-gray-800/95 to-transparent">
+          <div className="flex items-center gap-3 justify-end">
+            <Button
+              type="button"
+              onClick={() => !submitting && !uploading && onClose && onClose()}
+              variant="secondary"
+              disabled={submitting || uploading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                submitting ||
+                uploading ||
+                (methodRender === "brand"
+                  ? !(
+                      shippingAddress &&
+                      shippingAddress.line1 &&
+                      shippingAddress.postalCode
+                    )
+                  : !orderId.trim() ||
+                    amount === "" ||
+                    isNaN(Number(amount))) ||
+                (methodRender !== "brand" && !bankOk)
+              }
+              variant="success"
+              className="flex items-center gap-2"
+            >
+              {uploading ? (
+                "Uploading..."
+              ) : submitting ? (
+                "Submitting..."
+              ) : (
+                <>
+                  <FaCheckCircle /> Submit Order
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Motion.form>
     </div>
