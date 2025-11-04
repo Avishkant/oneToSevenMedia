@@ -14,6 +14,7 @@ export default function ApplicationCard({
   onApprove,
   onReject,
   showAdminActions = false,
+  reviewed = false,
   // optional callbacks for order lifecycle & appeals (parents may provide)
   onApproveOrder,
   onReleasePayment,
@@ -67,8 +68,17 @@ export default function ApplicationCard({
   const orderExists = Boolean(
     (a.order && a.order.status) || orderStatus !== "not-filled"
   );
-  const isApproved = String((a.status || "").toLowerCase()) === "approved";
-  const isRejected = String((a.status || "").toLowerCase()) === "rejected";
+  const status = String((a.status || "").toLowerCase());
+  const isApproved = status === "approved";
+  const isRejected = status === "rejected";
+  // order-review statuses that represent an approved/rejected order
+  const isOrderApproved =
+    status === "order_form_approved" || status === "completed";
+  const isOrderRejected =
+    status === "order_form_rejected" || status === "order_rejected";
+  const isReviewed = Boolean(
+    reviewed || isApproved || isRejected || isOrderApproved || isOrderRejected
+  );
   const lastAppId = useRef();
 
   useEffect(() => {
@@ -603,19 +613,21 @@ export default function ApplicationCard({
                         <>
                           <Button
                             onClick={() => onApprove && onApprove(a)}
-                            variant="success"
+                            variant={isReviewed ? "ghost" : "success"}
                             size="sm"
-                            disabled={isApproved || isRejected}
+                            disabled={isReviewed}
+                            className={isReviewed ? "text-slate-400" : ""}
                           >
-                            Approve
+                            {isReviewed ? "Reviewed" : "Approve"}
                           </Button>
                           <Button
                             onClick={() => onReject && onReject(a)}
-                            variant="danger"
+                            variant={isReviewed ? "ghost" : "danger"}
                             size="sm"
-                            disabled={isApproved || isRejected}
+                            disabled={isReviewed}
+                            className={isReviewed ? "text-slate-400" : ""}
                           >
-                            Reject
+                            {isReviewed ? "Reviewed" : "Reject"}
                           </Button>
                         </>
                       )}
@@ -657,9 +669,10 @@ export default function ApplicationCard({
               <>
                 <Button
                   onClick={() => onApprove && onApprove(a)}
-                  variant="success"
+                  variant={isReviewed ? "ghost" : "success"}
                   size="sm"
-                  disabled={isApproved || isRejected}
+                  disabled={isReviewed}
+                  className={isReviewed ? "text-slate-400" : ""}
                   leftIcon={
                     <svg
                       className="w-4 h-4"
@@ -676,13 +689,14 @@ export default function ApplicationCard({
                     </svg>
                   }
                 >
-                  Approve
+                  {isReviewed ? "Reviewed" : "Approve"}
                 </Button>
                 <Button
                   onClick={() => onReject && onReject(a)}
-                  variant="danger"
+                  variant={isReviewed ? "ghost" : "danger"}
                   size="sm"
-                  disabled={isApproved || isRejected}
+                  disabled={isReviewed}
+                  className={isReviewed ? "text-slate-400" : ""}
                   leftIcon={
                     <svg
                       className="w-4 h-4"

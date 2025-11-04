@@ -35,6 +35,7 @@ const StyledTextarea = ({ className = "", ...props }) => (
 export default function AdminOrderReviews() {
   const [filter, setFilter] = useState("");
   const [orders, setOrders] = useState([]);
+  const [reviewedIds, setReviewedIds] = useState({});
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const toast = useToast();
@@ -89,7 +90,17 @@ export default function AdminOrderReviews() {
           (a.campaign?.brandName || "").toLowerCase().includes(q)
         );
       }
-      setOrders(body || []);
+      // merge reviewedIds so muted state persists if we optimistically set it
+      const merged = (body || []).map((o) => ({
+        ...o,
+        _optimisticReviewed: Boolean(
+          reviewedIds[o._id] ||
+            o._optimisticReviewed ||
+            o.status === "approved" ||
+            o.status === "rejected"
+        ),
+      }));
+      setOrders(merged);
     } catch (err) {
       toast?.add(err.message || "Failed to load orders", { type: "error" });
     } finally {
@@ -219,6 +230,15 @@ export default function AdminOrderReviews() {
       }
       const body = await res.json().catch(() => null);
       toast?.add(`${verb}ed`, { type: "success" });
+      // if server returned the updated application, update it locally so
+      // ApplicationCard can derive disabled state from the server status
+      if (body && body._id) {
+        setOrders((prev) =>
+          (prev || []).map((o) => (o._id === body._id ? body : o))
+        );
+      }
+      // mark reviewed optimistically as a fallback
+      setReviewedIds((s) => ({ ...(s || {}), [id]: true }));
       await load();
       return body;
     } catch (err) {
@@ -727,6 +747,15 @@ export default function AdminOrderReviews() {
                             <ApplicationCard
                               application={a}
                               showAdminActions
+                              reviewed={Boolean(
+                                reviewedIds[a._id] ||
+                                  a._optimisticReviewed ||
+                                  a.status === "approved" ||
+                                  a.status === "rejected" ||
+                                  a.status === "order_form_approved" ||
+                                  a.status === "order_form_rejected" ||
+                                  a.status === "completed"
+                              )}
                               onApprove={() => openActionModal(a, "approve")}
                               onReject={() => openActionModal(a, "reject")}
                               onViewDetails={() => setSelectedApp(a)}
