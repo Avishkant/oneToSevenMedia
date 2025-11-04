@@ -135,6 +135,22 @@ export default function AdminOrderReviews() {
           s !== "completed"
         );
       });
+    // support grouped filters for approved/rejected which map to multiple
+    if (f === "approved") {
+      return list.filter((a) => {
+        const s = (a.status || "").toLowerCase();
+        return (
+          s === "approved" || s === "order_form_approved" || s === "completed"
+        );
+      });
+    }
+    if (f === "rejected") {
+      return list.filter((a) => {
+        const s = (a.status || "").toLowerCase();
+        return s === "rejected" || s === "order_form_rejected";
+      });
+    }
+
     return list.filter((a) => (a.status || "").toLowerCase() === f);
   };
 
@@ -636,6 +652,27 @@ export default function AdminOrderReviews() {
                       >
                         Reject Selected
                       </Button>
+
+                      <div className="flex items-center gap-2 ml-2">
+                        <label className="text-sm text-gray-300">Filter:</label>
+                        <select
+                          className="px-2 py-1 rounded bg-gray-700 border border-gray-600 text-sm text-white"
+                          value={
+                            (statusFilter && statusFilter[campId]) || "all"
+                          }
+                          onChange={(e) =>
+                            _setStatusFilter((s) => ({
+                              ...s,
+                              [campId]: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="all">All</option>
+                          <option value="pending">Others</option>
+                          <option value="approved">Approved</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
 
                       <div className="ml-auto flex gap-2">
                         <Button
