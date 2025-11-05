@@ -156,7 +156,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
+          {/* <Route
             path="/admin/payments"
             element={
               <PrivateRoute
@@ -166,7 +166,7 @@ function App() {
                 <AdminPayments />
               </PrivateRoute>
             }
-          />
+          /> */}
           <Route
             path="/influencer/applications"
             element={
